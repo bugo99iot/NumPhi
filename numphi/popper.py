@@ -1,14 +1,16 @@
 import numpy as np
-from numphi.exceptions import BoardException, ActorException
-from numphi.utils import is_square, print_checkboard
 import logging
 import math as math
 import random
 
 from numphi.parameters import COLORS_ALLOWED, INFLUENCE_TYPE
+from numphi.exceptions import BoardException, ActorException
+from numphi.utils import is_square, print_checkboard
 
 from dotenv import load_dotenv, find_dotenv
 import os
+
+# load env variables
 load_dotenv(find_dotenv())
 
 # define logging level
