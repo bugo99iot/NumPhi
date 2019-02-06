@@ -3,3 +3,17 @@ env
 *.png
 
 venv/
+
+*.idea
+
+__pycache__
+
+*.pyc
+logs/
+
+*.log
+*.ipynb_checkpoints
+*.Rhistory
+*.ipynb
+.hypothesis
+.pytest_cache

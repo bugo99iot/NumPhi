@@ -1,10 +1,9 @@
 import numpy as np
 from numphi.exceptions import BoardException, ActorException
-from numphi.utils import is_square
+from numphi.utils import is_square, print_checkboard
 import logging
 import math as math
-
-import matplotlib.pyplot as plt
+import random
 
 from numphi.parameters import COLORS_ALLOWED, INFLUENCE_TYPE
 
@@ -18,7 +17,7 @@ logger = logging.getLogger(__name__)
 if os.getenv('ENV') in ['staging', 'production']:
     logging.basicConfig(level=logging.WARNING)
 else:
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
 
 
 # todo: add Sentry hook
@@ -27,7 +26,7 @@ else:
 class Board(object):
 
     def __init__(self, n_actors: int, interaction_step: int = 1, color_gradient: tuple = ("red", "blue"),
-                 start: str = "random"):
+                 start: str = "random", start_proportion_intolerant: float = None):
 
         if isinstance(n_actors, int) is False or n_actors < 9:
 
@@ -59,21 +58,60 @@ class Board(object):
 
         self.color_gradient = color_gradient
 
+        self.start = start.lower() if start is not None else None
+
+        self.start_proportion_intolerant = start_proportion_intolerant
+
+        print(self.start_proportion_intolerant)
+
+        if self.start_proportion_intolerant is not None:
+
+            if isinstance(self.start_proportion_intolerant, float) is False or (0.0 <= self.start_proportion_intolerant
+                                                                                <= 1.0) is False:
+
+                raise BoardException("start_proportion must be a number between 0.0 and 1.0")
+
         if start == "random":
 
             self.actors = [Actor(t=np.random.randint(0, 10)/1000.0, a=0.2, d=0.3) for k in range(n_actors)]
 
+        elif start == "popper":
+
+            if start_proportion_intolerant is None:
+
+                raise BoardException("If you choose Popper as start, you need to set start_proportion variable, "
+                                     "e.g. start_proportion=0.9")
+
+            n_intolerant = int(start_proportion_intolerant * self.n_actors)
+
+            n_tolerant = self.n_actors - n_intolerant
+
+            self.actors = [Actor(t=0.0, a=1.0, d=1.0)]*n_intolerant + [Actor(t=1.0, a=0.0, d=1.0)]*n_tolerant
+
+            random.shuffle(self.actors,random.random)
+
+
 
     @property
-    def print_it(self):
+    def print_checkboard(self):
+        """
+        Print current checkboard
 
-        actors_to_print = np.asarray([k.t for k in self.actors])
+        :return:
+        """
 
-        image = actors_to_print.reshape((self.board_side, self.board_side))
+        print_checkboard(actors_list=self.actors, colors=self.color_gradient)
 
-        plt.matshow(image)
+        return None
 
-        plt.show()
+    @property
+    def print_distribution(self):
+        """
+        Print tolerance distribution in 0.1 buckets
+        :return:
+        """
+
+        return None
 
     def interact_n_times(self, n_of_interactions: int= 1):
 
@@ -116,5 +154,8 @@ print(type(test_actor))
 
 print(test_actor.t)
 
-board = Board(n_actors=900, interaction_step=1, color_gradient=("red", "blue"))
-board.print_it
+board = Board(n_actors=9, interaction_step=1, color_gradient=("red", "blue"))
+#board.print_checkboard
+
+board = Board(n_actors=900, interaction_step=1, color_gradient=("red", "blue"), start="popper", start_proportion_intolerant=0.1)
+board.print_checkboard
