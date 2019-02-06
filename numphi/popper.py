@@ -64,8 +64,6 @@ class Board(object):
 
         self.start_proportion_intolerant = start_proportion_intolerant
 
-        print(self.start_proportion_intolerant)
-
         if self.start_proportion_intolerant is not None:
 
             if isinstance(self.start_proportion_intolerant, float) is False or (0.0 <= self.start_proportion_intolerant
@@ -75,7 +73,8 @@ class Board(object):
 
         if start == "random":
 
-            self.actors = [Actor(t=np.random.randint(0, 10)/1000.0, a=0.2, d=0.3) for k in range(n_actors)]
+            self.actors = [Actor(t=np.random.randint(0, 100)/100.0, a=np.random.randint(0, 100)/100.0,
+                                 d=np.random.randint(0, 100)/100.0) for k in range(n_actors)]
 
         elif start == "popper":
 
@@ -88,13 +87,10 @@ class Board(object):
 
             n_tolerant = self.n_actors - n_intolerant
 
-            self.actors = [Actor(t=0.0, a=1.0, d=1.0)]*n_intolerant + [Actor(t=1.0, a=0.0, d=1.0)]*n_tolerant
+            self.actors = [Actor(t=0.0, a=1.0, d=1.0)]*n_intolerant + [Actor(t=1.0, a=0.0, d=0.1)]*n_tolerant
 
-            random.shuffle(self.actors,random.random)
+            random.shuffle(self.actors, random.random)
 
-
-
-    @property
     def print_checkboard(self):
         """
         Print current checkboard
@@ -106,7 +102,6 @@ class Board(object):
 
         return None
 
-    @property
     def print_distribution(self):
         """
         Print tolerance distribution in 0.1 buckets
@@ -115,7 +110,14 @@ class Board(object):
 
         return None
 
-    def interact_n_times(self, n_of_interactions: int= 1):
+    def interact_n_times(self, n_of_interactions: int = 1) -> None:
+
+        for steps in range(n_of_interactions):
+
+            for index, item in enumerate(self.actors[1:-1]):
+
+                influence(influenced=item, influencer=self.actors[index+1], direction="lower")
+                influence(influenced=item, influencer=self.actors[index-1], direction="lower")
 
         return None
 
@@ -138,26 +140,63 @@ def influence(influenced: Actor, influencer: Actor, direction: str = "lower") ->
 
         if influencer.t < influenced.t:
 
-            influenced.t -= influencer.t - influenced.t
+            amount = round((influenced.t - influencer.t)/10.0, 2)
+
+            if amount < 0.01:
+
+                amount = 0.01
+
+            influenced.t -= amount
+
+            influenced.t = round(influenced.t, 2)
+
+            if influenced.t > 1.0:
+
+                influenced.t = 1.0
+
+            if influenced.t < 0.0:
+
+                influenced.t = 0.0
+
 
         else:
 
             if direction == "bi":
 
-                influenced.t += influencer.t - influenced.t
+                amount = round((influencer.t - influenced.t) / 10.0, 2)
+
+                if amount < 0.01:
+                    amount = 0.01
+
+                influenced.t += amount
+
+                influenced.t = round(influenced.t, 2)
+
+                if influenced.t > 1.0:
+                    influenced.t = 1.0
+
+                if influenced.t < 0.0:
+                    influenced.t = 0.0
 
     return influenced
 
 
-test_actor = Actor(t=1.0, a=0.2, d=0.1)
+if __name__ == "__main__":
 
-print(type(test_actor))
+    test_actor = Actor(t=1.0, a=0.2, d=0.1)
 
+    #board = Board(n_actors=9, interaction_step=1, color_gradient=("red", "blue"))
+    #board.print_checkboard
 
-print(test_actor.t)
+    board = Board(n_actors=25, interaction_step=1, color_gradient=("red", "blue"), start="popper", start_proportion_intolerant=0.5)
+    board.print_checkboard()
+    board.interact_n_times(n_of_interactions=7)
+    board.print_checkboard()
 
-board = Board(n_actors=9, interaction_step=1, color_gradient=("red", "blue"))
-#board.print_checkboard
+    #board = Board(n_actors=25, interaction_step=1, color_gradient=("red", "blue"), start="random")
+    #board.interact_n_times(n_of_interactions=1000)
 
-board = Board(n_actors=900, interaction_step=1, color_gradient=("red", "blue"), start="popper", start_proportion_intolerant=0.1)
-board.print_checkboard
+    influencer = Actor(t=0.0, a=1.0, d=1.0)
+    influenced = Actor(t=1.0, a=1.0, d=0.99)
+
+    influenced_after_influence = influence(influencer=influencer, influenced=influenced, direction="lower")
