@@ -17,3 +17,7 @@ logs/
 *.ipynb
 .hypothesis
 .pytest_cache
+
+dist/
+
+NumPhi.egg-info/

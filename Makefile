@@ -13,8 +13,12 @@ install_tk: ## Install tkinter used by matplotlib backend
 freeze: ## Freeze requirements
 	pip freeze > requirements.txt
 
+.PHONY: test
+test: ## run pytest on local machine, you must be in pwd = numphi root
+	pytest -vv -s -q
+
 .PHONY: pip-deploy
 pip-deploy: ## Deploy package to pip universe
 	make test
-	sudo python setup.py sdist
+	python setup.py sdist
 	# sudo rm -R dist
