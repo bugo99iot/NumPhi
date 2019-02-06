@@ -1,1 +1,3 @@
-# include numphi/some_folder/*json
+include numphi/sample_data/*json
+include numphi/sample_data/*png
+
