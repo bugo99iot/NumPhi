@@ -7,7 +7,9 @@ def test_influence():
     influencer = Actor(t=0.0, a=1.0, d=1.0)
     influenced = Actor(t=1.0, a=1.0, d=0.99)
 
-    assert popper.influence(influencer=influencer, influenced=influenced, direction="lower").t == 0.9
+    new_influenced = popper.influence(influencer=influencer, influenced=influenced, direction="lower")
+
+    assert new_influenced.t == 0.9
 
     influencer = Actor(t=0.99, a=1.0, d=1.0)
     influenced = Actor(t=1.0, a=1.0, d=0.99)

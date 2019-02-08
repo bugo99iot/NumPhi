@@ -87,7 +87,7 @@ class Board(object):
 
             n_tolerant = self.n_actors - n_intolerant
 
-            self.actors = [Actor(t=0.0, a=1.0, d=1.0)]*n_intolerant + [Actor(t=1.0, a=0.0, d=0.1)]*n_tolerant
+            self.actors = [Actor(t=0.0, a=1.0, d=1.0)]*n_intolerant + [Actor(t=1.0, a=0.0, d=0.0)]*n_tolerant
 
             random.shuffle(self.actors, random.random)
 
@@ -112,12 +112,34 @@ class Board(object):
 
     def interact_n_times(self, n_of_interactions: int = 1) -> None:
 
+        print([k.t for k in self.actors])
+
+        actors_after_interact = list()
+
         for steps in range(n_of_interactions):
 
             for index, item in enumerate(self.actors[1:-1]):
 
-                influence(influenced=item, influencer=self.actors[index+1], direction="lower")
-                influence(influenced=item, influencer=self.actors[index-1], direction="lower")
+                #print("Before: {}".format(item.t))
+
+                print("Influencer t: {}".format(self.actors[index+1].t))
+                print("Influenced t: {}".format(item.t))
+
+
+                item = influence(influenced=item, influencer=self.actors[index+1])
+                #item = influence(influenced=item, influencer=self.actors[index-1])
+
+                #print("After: {}".format(item.t))
+
+                print("Influenced t after: {}".format(item.t))
+
+                print()
+
+                self.actors[index] = item
+
+            print([k.t for k in self.actors])
+
+            print_checkboard(actors_list=self.actors, colors=self.color_gradient)
 
         return None
 
@@ -158,7 +180,6 @@ def influence(influenced: Actor, influencer: Actor, direction: str = "lower") ->
 
                 influenced.t = 0.0
 
-
         else:
 
             if direction == "bi":
@@ -188,15 +209,15 @@ if __name__ == "__main__":
     #board = Board(n_actors=9, interaction_step=1, color_gradient=("red", "blue"))
     #board.print_checkboard
 
-    board = Board(n_actors=25, interaction_step=1, color_gradient=("red", "blue"), start="popper", start_proportion_intolerant=0.5)
-    board.print_checkboard()
-    board.interact_n_times(n_of_interactions=7)
-    board.print_checkboard()
+    board = Board(n_actors=81, interaction_step=1, color_gradient=("red", "blue"), start="popper", start_proportion_intolerant=0.5)
+    #board.print_checkboard()
+    board.interact_n_times(n_of_interactions=30)
+    #board.print_checkboard()
 
     #board = Board(n_actors=25, interaction_step=1, color_gradient=("red", "blue"), start="random")
     #board.interact_n_times(n_of_interactions=1000)
 
-    influencer = Actor(t=0.0, a=1.0, d=1.0)
-    influenced = Actor(t=1.0, a=1.0, d=0.99)
+    #influencer = Actor(t=0.0, a=1.0, d=1.0)
+    #influenced = Actor(t=1.0, a=1.0, d=0.99)
 
-    influenced_after_influence = influence(influencer=influencer, influenced=influenced, direction="lower")
+    #influenced_after_influence = influence(influencer=influencer, influenced=influenced, direction="lower")
