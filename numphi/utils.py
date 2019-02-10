@@ -31,6 +31,8 @@ def print_checkboard(checkboard: np.ndarray, colors: tuple) -> None:
     :return:
     """
 
+    # todo: show in plot epoch and abs number of tol / intol defined with 0.5 threshold
+
     side = checkboard.shape[0]
 
     checkboard_linear = checkboard.reshape(-1)
