@@ -5,7 +5,7 @@ import random
 
 from numphi.parameters import COLORS_ALLOWED, INFLUENCE_TYPE
 from numphi.exceptions import BoardException, ActorException
-from numphi.utils import is_square, print_checkboard
+from numphi.utils import is_square, print_checkboard, get_all_combos
 
 from dotenv import load_dotenv, find_dotenv
 import os
@@ -24,11 +24,21 @@ else:
 
 # todo: add Sentry hook
 
+# todo: add interaction step dump, interaction becomes weaker
+
+# todo: add is bounded problem?
+
+# todo check is reinforcement as effective for the tolerant as for the intolerant
+
+# todo: add media
 
 class Board(object):
 
     def __init__(self, n_actors: int, interaction_step: int = 1, color_gradient: tuple = ("red", "blue"),
-                 start: str = "random", start_proportion_intolerant: float = None):
+                 start: str = "random", start_proportion_intolerant: float = None, reinforce: float = 0.0,
+                 share_active: float = 1.0):
+
+        # todo if opinion are similar, increase a and d
 
         if isinstance(n_actors, int) is False or n_actors < 9:
 
@@ -38,6 +48,13 @@ class Board(object):
             raise BoardException("n_actors must be a square number")
 
         self.n_actors = n_actors
+
+        if share_active is None or isinstance(share_active, float) is None \
+                or (0.0 <= share_active <= 1.0) is False:
+
+            raise BoardException("reinforce must be a float between 0 and 1")
+
+        self.share_active = share_active
 
         self.board_side = int(math.sqrt(self.n_actors))
 
@@ -52,6 +69,13 @@ class Board(object):
 
             self.interaction_step = self.board_side - 1
 
+        if reinforce is None or isinstance(reinforce, float) is None \
+                or (0.0 <= reinforce <= 1.0) is False:
+
+            raise BoardException("reinforce must be a float between 0 and 1")
+
+        self.reinforce = reinforce
+
         if isinstance(color_gradient, tuple) is False or (False in [isinstance(k, str) for k in color_gradient]) \
                 or (True in [k not in COLORS_ALLOWED for k in color_gradient]) or (len(color_gradient)) != 2 or \
                 (color_gradient[0] == color_gradient[1]):
@@ -59,6 +83,8 @@ class Board(object):
             raise BoardException("Color gradient must be a tuple of colors amongst allowed: {}".format(COLORS_ALLOWED))
 
         self.color_gradient = color_gradient
+
+        # todo: check start
 
         self.start = start.lower() if start is not None else None
 
@@ -73,8 +99,14 @@ class Board(object):
 
         if start == "random":
 
-            self.actors = [Actor(t=np.random.randint(0, 100)/100.0, a=np.random.randint(0, 100)/100.0,
-                                 d=np.random.randint(0, 100)/100.0) for k in range(n_actors)]
+            self.checkboard = np.array([Actor(t=round(random.random(), 2),
+                                              a=round(random.random(), 2),
+                                              d=round(random.random(), 2)) for _ in
+                                        range(self.n_actors)])
+
+            np.random.shuffle(self.checkboard)
+
+            self.checkboard = self.checkboard.reshape(self.board_side, self.board_side)
 
         elif start == "popper":
 
@@ -87,9 +119,21 @@ class Board(object):
 
             n_tolerant = self.n_actors - n_intolerant
 
-            self.actors = [Actor(t=0.0, a=1.0, d=1.0)]*n_intolerant + [Actor(t=1.0, a=0.0, d=0.0)]*n_tolerant
+            logging.info("Intolerant: {}, Tolerant: {}".format(n_intolerant, n_tolerant))
 
-            random.shuffle(self.actors, random.random)
+            intol = np.array([Actor(t=0.0, a=1.0, d=1.0) for _ in range(n_intolerant)])
+
+            tol = np.array([Actor(t=1.0, a=0.0, d=0.0) for _ in range(n_tolerant)])
+
+            intol_tol = np.concatenate((intol, tol), axis=0)
+
+            np.random.shuffle(intol_tol)
+
+            self.checkboard = intol_tol.reshape(self.board_side, self.board_side)
+
+        else:
+
+            raise BoardException("Start not understood")
 
     def print_checkboard(self):
         """
@@ -98,7 +142,7 @@ class Board(object):
         :return:
         """
 
-        print_checkboard(actors_list=self.actors, colors=self.color_gradient)
+        print_checkboard(checkboard=self.checkboard, colors=self.color_gradient)
 
         return None
 
@@ -112,34 +156,35 @@ class Board(object):
 
     def interact_n_times(self, n_of_interactions: int = 1) -> None:
 
-        print([k.t for k in self.actors])
-
-        actors_after_interact = list()
-
         for steps in range(n_of_interactions):
 
-            for index, item in enumerate(self.actors[1:-1]):
+            new_board = np.array([Actor(t=0.0, a=0.0, d=0.0)
+                                  for _ in range(self.n_actors)]).reshape(self.board_side, self.board_side)
 
-                #print("Before: {}".format(item.t))
+            for coords, actor in np.ndenumerate(self.checkboard):
 
-                print("Influencer t: {}".format(self.actors[index+1].t))
-                print("Influenced t: {}".format(item.t))
+                # find all actors being infulenced by current actor
 
+                all_combos = get_all_combos(coords=coords, range=self.interaction_step, board_side=self.board_side)
 
-                item = influence(influenced=item, influencer=self.actors[index+1])
-                #item = influence(influenced=item, influencer=self.actors[index-1])
+                if self.share_active < 1.0:
 
-                #print("After: {}".format(item.t))
+                    # todo: make elegant
+                    cut_index = random.randint(0, int(round(self.share_active*100.0))) / 100.0 * len(all_combos)
 
-                print("Influenced t after: {}".format(item.t))
+                    all_combos = all_combos[:round(int(cut_index))]
 
-                print()
+                for combo in all_combos:
 
-                self.actors[index] = item
+                    influenced = influence(influenced=self.checkboard[combo], influencer=actor, direction="bi")
 
-            print([k.t for k in self.actors])
+                    influenced = reinforce(influenced=influenced, influencer=actor, direction="bi")
 
-            print_checkboard(actors_list=self.actors, colors=self.color_gradient)
+                    new_board[combo] = influenced
+
+            self.checkboard = new_board
+
+            self.print_checkboard()
 
         return None
 
@@ -153,10 +198,12 @@ class Actor(object):
         self.d = d
 
 
-def influence(influenced: Actor, influencer: Actor, direction: str = "lower") -> Actor:
+def influence(influenced: Actor, influencer: Actor, direction: str = "lower", reinforce: float or None = None) -> Actor:
 
     if direction not in INFLUENCE_TYPE:
         raise Exception("direction must be 'lower' or 'bi'")
+
+    # if two actors are of same opinion, tolerance stays the same and attack and defence of influenced increase
 
     if influencer.a > influenced.d:
 
@@ -202,22 +249,87 @@ def influence(influenced: Actor, influencer: Actor, direction: str = "lower") ->
     return influenced
 
 
+def reinforce(influenced: Actor, influencer: Actor, direction: str = "lower") -> Actor:
+
+    if direction not in INFLUENCE_TYPE:
+        raise Exception("direction must be 'lower' or 'bi'")
+
+    # if two actors are of same opinion, tolerance stays the same and attack and defence of influenced increase
+
+    if abs(influencer.t - influenced.t) < 0.1:
+
+        influenced.a += 0.01
+
+        influenced.d += 0.01
+
+        influenced.a = round(influenced.a, 2)
+
+        influenced.d = round(influenced.d, 2)
+
+        if influenced.a < 0.0:
+
+            influenced.a = 0.0
+
+        if influenced.a > 1.0:
+
+            influenced.a = 1.0
+
+        if influenced.d < 0.0:
+
+            influenced.d = 0.0
+
+        if influenced.d > 1.0:
+
+            influenced.d = 1.0
+
+    if direction == "bi":
+
+        if abs(influencer.t - influenced.t) > 0.1:
+
+            influenced.a -= 0.01
+
+            influenced.d -= 0.01
+
+            influenced.a = round(influenced.a, 2)
+
+            influenced.d = round(influenced.d, 2)
+
+            if influenced.a < 0.0:
+
+                influenced.a = 0.0
+
+            if influenced.a > 1.0:
+
+                influenced.a = 1.0
+
+            if influenced.d < 0.0:
+
+                influenced.d = 0.0
+
+            if influenced.d > 1.0:
+
+                influenced.d = 1.0
+
+    return influenced
+
+
 if __name__ == "__main__":
 
-    test_actor = Actor(t=1.0, a=0.2, d=0.1)
+    # test_actor = Actor(t=1.0, a=0.2, d=0.1)
 
-    #board = Board(n_actors=9, interaction_step=1, color_gradient=("red", "blue"))
-    #board.print_checkboard
+    # board = Board(n_actors=9, interaction_step=1, color_gradient=("red", "blue"))
+    # board.print_checkboard
 
-    board = Board(n_actors=81, interaction_step=1, color_gradient=("red", "blue"), start="popper", start_proportion_intolerant=0.5)
-    #board.print_checkboard()
-    board.interact_n_times(n_of_interactions=30)
-    #board.print_checkboard()
+    board = Board(n_actors=16, interaction_step=3, color_gradient=("red", "blue"), start="random",
+                  start_proportion_intolerant=0.9, share_active=0.5)
+    board.print_checkboard()
+    board.interact_n_times(n_of_interactions=60)
+    # board.print_checkboard()
 
-    #board = Board(n_actors=25, interaction_step=1, color_gradient=("red", "blue"), start="random")
-    #board.interact_n_times(n_of_interactions=1000)
+    # board = Board(n_actors=25, interaction_step=1, color_gradient=("red", "blue"), start="random")
+    # board.interact_n_times(n_of_interactions=1000)
 
-    #influencer = Actor(t=0.0, a=1.0, d=1.0)
-    #influenced = Actor(t=1.0, a=1.0, d=0.99)
+    # influencer = Actor(t=0.0, a=1.0, d=1.0)
+    # influenced = Actor(t=1.0, a=1.0, d=0.99)
 
-    #influenced_after_influence = influence(influencer=influencer, influenced=influenced, direction="lower")
+    # influenced_after_influence = influence(influencer=influencer, influenced=influenced, direction="lower")
