@@ -1,12 +1,12 @@
-class BoardException(Exception):
+class CheckBoardException(Exception):
     """
     This exception should be raised when an exception occurs on Board object
     """
     pass
 
 
-class ActorException(Exception):
+class CellException(Exception):
     """
-    This exception should be raised when an exception occurs on Actor object
+    This exception should be raised when an exception occurs on cell object
     """
     pass
