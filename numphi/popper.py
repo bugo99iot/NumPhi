@@ -38,13 +38,15 @@ else:
 
 # todo: develop plot with slider
 
+# todo: def function for a, d change when in influencer and influenced are in agreement
+
+# todo: def function for t change when influencer.a > influenced.d
+
 class CheckBoard(object):
 
     def __init__(self, n_cells: int, interaction_step: int = 1, color_gradient: tuple = ("red", "blue"),
                  start: str = "random", start_proportion_intolerant: float = None, reinforce: float = 0.0,
                  share_active: float = 1.0):
-
-        # todo if opinion are similar, increase a and d
 
         if isinstance(n_cells, int) is False or n_cells < 9 or n_cells > 1000000:
 
