@@ -44,9 +44,9 @@ else:
 
 class CheckBoard(object):
 
-    def __init__(self, n_cells: int, interaction_step: int = 1, color_gradient: tuple = ("red", "blue"),
+    def __init__(self, n_cells: int, interaction_step: int = 1,
                  start: str = "random", start_proportion_intolerant: float = None, influence: str = "always",
-                 reinforce: str = "always", share_active: float = 1.0):
+                 reinforce: str = "always", share_active: float = 1.0, cmap: str = "spring"):
 
         if isinstance(n_cells, int) is False or n_cells < 4 or n_cells > 1000000:
 
@@ -91,13 +91,12 @@ class CheckBoard(object):
 
         self.influence = influence
 
-        if isinstance(color_gradient, tuple) is False or (False in [isinstance(k, str) for k in color_gradient]) \
-                or (True in [k not in COLORS_ALLOWED for k in color_gradient]) or (len(color_gradient)) != 2 or \
-                (color_gradient[0] == color_gradient[1]):
+        if cmap is None or isinstance(cmap, str) is False:
 
-            raise CheckBoardException("Color gradient must be a tuple of colors amongst allowed: {}".format(COLORS_ALLOWED))
+            raise CheckBoardException("cmap must be one of the following: https://matplotlib.org/examples/color/colormap"
+                                      "s_reference.html")
 
-        self.color_gradient = color_gradient
+        self.cmap = cmap
 
         # todo: check start
 
@@ -157,7 +156,7 @@ class CheckBoard(object):
         :return:
         """
 
-        print_checkboard(checkboard=self.checkboard, colors=self.color_gradient)
+        print_checkboard(checkboard=self.checkboard, cmap=self.cmap, epoch="manual")
 
         return None
 
@@ -206,11 +205,9 @@ class CheckBoard(object):
 
             new_board = copy.copy(step_board)
 
-            print_checkboard(checkboard=new_board, colors=self.color_gradient)
+            #print_checkboard(checkboard=new_board, cmap=self.cmap, epoch=steps+1)
 
         self.checkboard = new_board
-
-        self.print_checkboard()
 
         return self.checkboard
 
@@ -289,13 +286,8 @@ def reinforce(influenced: Cell, influencer: Cell, direction) -> Cell:
 
 if __name__ == "__main__":
 
-
-    # board = Board(n_cells=9, interaction_step=1, color_gradient=("red", "blue"))
-    # board.print_checkboard
-
-    board = CheckBoard(n_cells=4, interaction_step=1, color_gradient=("red", "blue"), start="popper", share_active=1.0,
-                       start_proportion_intolerant=0.25, reinforce="none", influence="drag_down")
+    board = CheckBoard(n_cells=100, interaction_step=3, start="popper", share_active=1.0,
+                       start_proportion_intolerant=0.3, reinforce="when_intolerant", influence="drag_down")
     board.print_checkboard()
-    board.interact_n_times(n_of_interactions=100)
-    # board.print_checkboard()
-
+    board.interact_n_times(n_of_interactions=1000)
+    board.print_checkboard()

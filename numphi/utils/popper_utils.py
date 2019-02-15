@@ -25,7 +25,7 @@ def is_square(integer: int):
         return False
 
 
-def print_checkboard(checkboard: np.ndarray, colors: tuple) -> None:
+def print_checkboard(checkboard: np.ndarray, cmap: str, epoch: int) -> None:
     """
 
     :param checkboard:
@@ -39,11 +39,39 @@ def print_checkboard(checkboard: np.ndarray, colors: tuple) -> None:
 
     checkboard_linear = checkboard.reshape(-1)
 
-    checkboard_linear = np.array([k.t for k in checkboard_linear]).reshape(side, side)
+    checkboard_tolerance = np.array([k.t for k in checkboard_linear]).reshape(side, side)
 
-    plt.matshow(checkboard_linear)
+    checkboard_attack = np.array([k.a for k in checkboard_linear]).reshape(side, side)
+
+    checkboard_defense = np.array([k.d for k in checkboard_linear]).reshape(side, side)
+
+    plt.figure(1)
+
+    plt.subplot(121)
+    plt.imshow(checkboard_tolerance, vmin=0.0, vmax=1.0, cmap=cmap)
+    plt.gca().set_title("Tolerance")
+
+    plt.xticks([])
+    plt.yticks([])
+
+    plt.subplot(122)
+
+    plt.imshow(checkboard_attack, vmin=0.0, vmax=1.0, cmap=cmap)
+
+    plt.gca().set_title("Attack")
+
+    plt.xticks([])
+    plt.yticks([])
+
+    plt.suptitle("Epoch: {}".format(epoch))
 
     plt.show()
+
+    """    plt.imshow(checkboard_tolerance, vmin=0.0, vmax=1.0, cmap=cmap)
+
+    plt.suptitle("Epoch: {}".format(epoch))
+
+    plt.show()"""
 
 
 def get_all_combos(coords: tuple, interaction_step: int, board_side: int) -> list:

@@ -15,7 +15,7 @@ freeze: ## Freeze requirements
 
 .PHONY: test
 test: ## run pytest on local machine
-	. venv/bin/activate && cd numphi && pytest -vv -s -q
+	. venv/bin/activate && cd numphi && pytest -vv
 
 
 .PHONY: pip-deploy
