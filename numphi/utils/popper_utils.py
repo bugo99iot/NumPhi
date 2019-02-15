@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import random
 
+from numphi.parameters import INFLUENCE_OPTIONS, REINFORCE_OPTIONS
+
 
 def is_square(integer: int):
     """
@@ -85,10 +87,39 @@ def get_all_combos(coords: tuple, interaction_step: int, board_side: int) -> lis
     return combos
 
 
+def bound_value(value: float):
+    """
+    Return value within bounds
+
+    :param value:
+    :return:
+    """
+
+    upper_bound = 1.0
+    lower_bound = 0.0
+
+    if value > upper_bound:
+
+        return 1.0
+
+    if value < lower_bound:
+
+        return 0.0
+
+    return value
+
+
 def get_influenced_t_after_influence(influenced_t: float, influencer_t: float,
                                      influenced_a: float, influencer_a: float,
                                      influenced_d: float, influencer_d: float,
-                                     direction: str = "lower") -> float:
+                                     direction: str) -> float:
+
+    if direction is None or isinstance(direction, str) is False or direction not in INFLUENCE_OPTIONS:
+        raise Exception("influence must be a string among: {}".format(INFLUENCE_OPTIONS))
+
+    if direction == "none":
+
+        return influenced_t
 
     min_influence = 0.01
 
@@ -100,13 +131,15 @@ def get_influenced_t_after_influence(influenced_t: float, influencer_t: float,
 
     # if influenced is enough influential, influenced_t will be modified
 
-    amount = round((influencer_t - influenced_t) / 10.0, 2)
+    tolerance_gap = influenced_t - influencer_t
 
-    if amount < 0.0:
+    # if influencer is more tolerant and direction is drag up, then influenced becomes more tolerant
 
-        if direction == "bi":
+    if tolerance_gap < 0.0:
 
-            amount = abs(amount)
+        if direction in ["drag_up", "always"]:
+
+            amount = abs(round(tolerance_gap / 10.0, 2))
 
             if amount < min_influence:
 
@@ -114,20 +147,208 @@ def get_influenced_t_after_influence(influenced_t: float, influencer_t: float,
 
             influenced_t += amount
 
-    elif amount > 0.0:
+        return bound_value(value=influenced_t)
 
-        if amount < min_influence:
+    # if influencer is more intolerant, then influenced becomes more intolerant
 
-            amount = min_influence
+    elif tolerance_gap > 0.0:
 
-        influenced_t -= amount
+        if direction in ["drag_down", "always"]:
 
-    if influenced_t > 1.0:
+            amount = round(tolerance_gap / 10.0, 2)
 
-        influenced_t = 1.0
+            if amount < min_influence:
 
-    if influenced_t < 0.0:
+                amount = min_influence
 
-        influenced_t = 0.0
+            influenced_t -= amount
 
-    return influenced_t
+            return bound_value(value=influenced_t)
+
+    return bound_value(value=influenced_t)
+
+
+def get_influenced_a_after_influence(influenced_t: float, influencer_t: float,
+                                     influenced_a: float, influencer_a: float,
+                                     influenced_d: float, influencer_d: float,
+                                     direction: str) -> float:
+
+    if direction is None or isinstance(direction, str) is False or direction not in REINFORCE_OPTIONS:
+        raise Exception("influence must be a string among: {}".format(REINFORCE_OPTIONS))
+
+    if direction == "none":
+        return influenced_a
+
+    tolerance_gap_for_similarity = 0.2
+
+    change_in_attack = 0.01
+
+    tolerance_gap = influencer_t - influenced_t
+
+    max_tolerance = max(influenced_t, influencer_t)
+
+    min_tolerance = min(influenced_t, influencer_t)
+
+    # case in which both cells are tolerant
+
+    if min_tolerance > 0.5:
+
+        if direction in ["always", "when_tolerant"]:
+
+            if abs(tolerance_gap) <= tolerance_gap_for_similarity:
+
+                influenced_a += change_in_attack
+
+                influenced_a = round(influenced_a, 2)
+
+                return bound_value(value=influenced_a)
+
+            elif abs(tolerance_gap) > tolerance_gap_for_similarity:
+
+                influenced_a -= change_in_attack
+
+                influenced_a = round(influenced_a, 2)
+
+                return bound_value(value=influenced_a)
+
+    # case in which both cells are intolerant
+
+    elif max_tolerance < 0.5:
+
+        if direction in ["always", "when_intolerant"]:
+
+            if abs(tolerance_gap) <= tolerance_gap_for_similarity:
+
+                influenced_a += change_in_attack
+
+                influenced_a = round(influenced_a, 2)
+
+                return bound_value(value=influenced_a)
+
+            elif abs(tolerance_gap) > tolerance_gap_for_similarity:
+
+                influenced_a -= change_in_attack
+
+                influenced_a = round(influenced_a, 2)
+
+                return bound_value(value=influenced_a)
+
+    else:
+
+        # if average is exactly 0.5 or one is tolerant, one intolerant, don't perform any action unless direction is
+        # always
+
+        if direction == "always":
+
+            if abs(tolerance_gap) <= tolerance_gap_for_similarity:
+
+                influenced_a += change_in_attack
+
+                influenced_a = round(influenced_a, 2)
+
+                return bound_value(value=influenced_a)
+
+            elif abs(tolerance_gap) > tolerance_gap_for_similarity:
+
+                influenced_a -= change_in_attack
+
+                influenced_a = round(influenced_a, 2)
+
+                return bound_value(value=influenced_a)
+
+        return influenced_a
+
+    return influenced_a
+
+
+def get_influenced_d_after_influence(influenced_t: float, influencer_t: float,
+                                     influenced_a: float, influencer_a: float,
+                                     influenced_d: float, influencer_d: float,
+                                     direction: str) -> float:
+
+    if direction is None or isinstance(direction, str) is False or direction not in REINFORCE_OPTIONS:
+        raise Exception("influence must be a string among: {}".format(REINFORCE_OPTIONS))
+
+    if direction == "none":
+        return influenced_d
+
+    tolerance_gap_for_similarity = 0.2
+
+    change_in_attack = 0.01
+
+    tolerance_gap = influencer_t - influenced_t
+
+    max_tolerance = max(influenced_t, influencer_t)
+
+    min_tolerance = min(influenced_t, influencer_t)
+
+    # case in which both cells are tolerant
+
+    if min_tolerance > 0.5:
+
+        if direction in ["always", "when_tolerant"]:
+
+            if abs(tolerance_gap) <= tolerance_gap_for_similarity:
+
+                influenced_d += change_in_attack
+
+                influenced_d = round(influenced_d, 2)
+
+                return bound_value(value=influenced_d)
+
+            elif abs(tolerance_gap) > tolerance_gap_for_similarity:
+
+                influenced_d -= change_in_attack
+
+                influenced_d = round(influenced_d, 2)
+
+                return bound_value(value=influenced_d)
+
+    # case in which both cells are intolerant
+
+    elif max_tolerance < 0.5:
+
+        if direction in ["always", "when_intolerant"]:
+
+            if abs(tolerance_gap) <= tolerance_gap_for_similarity:
+
+                influenced_d += change_in_attack
+
+                influenced_d = round(influenced_d, 2)
+
+                return bound_value(value=influenced_d)
+
+            elif abs(tolerance_gap) > tolerance_gap_for_similarity:
+
+                influenced_d -= change_in_attack
+
+                influenced_d = round(influenced_d, 2)
+
+                return bound_value(value=influenced_d)
+
+    else:
+
+        # if average is exactly 0.5 or one is tolerant, one intolerant, don't perform any action unless direction is
+        # always
+
+        if direction == "always":
+
+            if abs(tolerance_gap) <= tolerance_gap_for_similarity:
+
+                influenced_d += change_in_attack
+
+                influenced_d = round(influenced_d, 2)
+
+                return bound_value(value=influenced_d)
+
+            elif abs(tolerance_gap) > tolerance_gap_for_similarity:
+
+                influenced_d -= change_in_attack
+
+                influenced_d = round(influenced_d, 2)
+
+                return bound_value(value=influenced_d)
+
+        return influenced_d
+
+    return influenced_d

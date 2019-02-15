@@ -2,10 +2,12 @@ import numpy as np
 import logging
 import math as math
 import random
+import copy
 
-from numphi.parameters import COLORS_ALLOWED, INFLUENCE_TYPE
+from numphi.parameters import COLORS_ALLOWED, INFLUENCE_OPTIONS, REINFORCE_OPTIONS
 from numphi.exceptions import CheckBoardException, CellException
-from numphi.utils.popper_utils import is_square, print_checkboard, get_all_combos, get_influenced_t_after_influence
+from numphi.utils.popper_utils import is_square, print_checkboard, get_all_combos, get_influenced_t_after_influence, \
+    get_influenced_a_after_influence, get_influenced_d_after_influence
 
 from dotenv import load_dotenv, find_dotenv
 import os
@@ -38,19 +40,15 @@ else:
 
 # todo: develop plot with slider
 
-# todo: def function for a, d change when in influencer and influenced are in agreement
-
-# todo: def function for t change when influencer.a > influenced.d
-
 # todo add more start like half or bands or circles
 
 class CheckBoard(object):
 
     def __init__(self, n_cells: int, interaction_step: int = 1, color_gradient: tuple = ("red", "blue"),
-                 start: str = "random", start_proportion_intolerant: float = None, reinforce: float = 0.0,
-                 share_active: float = 1.0):
+                 start: str = "random", start_proportion_intolerant: float = None, influence: str = "always",
+                 reinforce: str = "always", share_active: float = 1.0):
 
-        if isinstance(n_cells, int) is False or n_cells < 9 or n_cells > 1000000:
+        if isinstance(n_cells, int) is False or n_cells < 4 or n_cells > 1000000:
 
             raise CheckBoardException("n_cells must be a square number integer n so that 9 <= n <= 1,000,000")
 
@@ -60,10 +58,10 @@ class CheckBoard(object):
 
         self.n_cells = n_cells
 
-        if share_active is None or isinstance(share_active, float) is None \
+        if share_active is None or isinstance(share_active, float) is False \
                 or (0.0 <= share_active <= 1.0) is False:
 
-            raise CheckBoardException("reinforce must be a float between 0 and 1")
+            raise CheckBoardException("share_active must be a float between 0 and 1")
 
         self.share_active = share_active
 
@@ -75,18 +73,23 @@ class CheckBoard(object):
 
         self.interaction_step = interaction_step
 
-        if interaction_step > self.board_side - 1:
+        if interaction_step >= self.board_side - 1:
 
             logging.warning("Interaction step is large. cells interac with full board.")
 
             self.interaction_step = self.board_side - 1
 
-        if reinforce is None or isinstance(reinforce, float) is None \
-                or (0.0 <= reinforce <= 1.0) is False:
+        if reinforce is None or isinstance(reinforce, str) is False or reinforce not in REINFORCE_OPTIONS:
 
-            raise CheckBoardException("reinforce must be a float between 0 and 1")
+            raise CheckBoardException("reinforce must be a string among: {}".format(REINFORCE_OPTIONS))
 
         self.reinforce = reinforce
+
+        if influence is None or isinstance(influence, str) is False or influence not in INFLUENCE_OPTIONS:
+
+            raise CheckBoardException("influence must be a string among: {}".format(INFLUENCE_OPTIONS))
+
+        self.influence = influence
 
         if isinstance(color_gradient, tuple) is False or (False in [isinstance(k, str) for k in color_gradient]) \
                 or (True in [k not in COLORS_ALLOWED for k in color_gradient]) or (len(color_gradient)) != 2 or \
@@ -168,37 +171,48 @@ class CheckBoard(object):
 
     def interact_n_times(self, n_of_interactions: int = 1) -> None:
 
+        new_board = copy.copy(self.checkboard)
+
         for steps in range(n_of_interactions):
 
-            new_board = np.array([Cell(t=0.0, a=0.0, d=0.0)
-                                  for _ in range(self.n_cells)]).reshape(self.board_side, self.board_side)
+            step_board = copy.copy(new_board)
 
             for coords, cell in np.ndenumerate(self.checkboard):
 
                 # find all cells being influenced by current cell
 
-                all_combos = get_all_combos(coords=coords, interaction_step=self.interaction_step, board_side=self.board_side)
+                all_combos = get_all_combos(coords=coords, interaction_step=self.interaction_step,
+                                            board_side=self.board_side)
 
                 if self.share_active < 1.0:
 
                     # todo: make elegant
                     cut_index = int(round(random.uniform(self.share_active, 1.0) * len(all_combos)))
 
+                    # each cell should interact at least with one cell
+                    if cut_index == 0:
+
+                        cut_index = 1
+
                     all_combos = all_combos[:cut_index]
 
                 for combo in all_combos:
 
-                    influenced = influence(influenced=self.checkboard[combo], influencer=cell, direction="bi")
+                    influenced = influence(influenced=new_board[combo], influencer=cell, direction=self.influence)
 
-                    influenced = reinforce(influenced=influenced, influencer=cell, direction="bi")
+                    influenced = reinforce(influenced=influenced, influencer=cell, direction=self.reinforce)
 
-                    new_board[combo] = influenced
+                    step_board[combo] = influenced
 
-            self.checkboard = new_board
+            new_board = copy.copy(step_board)
 
-            self.print_checkboard()
+            print_checkboard(checkboard=new_board, colors=self.color_gradient)
 
-        return None
+        self.checkboard = new_board
+
+        self.print_checkboard()
+
+        return self.checkboard
 
 
 class Cell(object):
@@ -234,83 +248,43 @@ class Cell(object):
         self.r = r
 
 
-def influence(influenced: Cell, influencer: Cell, direction: str = "lower", reinforce: float or None = None) -> Cell:
+def influence(influenced: Cell, influencer: Cell, direction: str) -> Cell:
 
-    if direction not in INFLUENCE_TYPE:
-        raise Exception("direction must be 'lower' or 'bi'")
+    if direction not in INFLUENCE_OPTIONS:
+        raise Exception("direction must be among: {}".format(INFLUENCE_OPTIONS))
+
+    # define brand new cell to avoid changing original
+    cell_after_influence = copy.copy(influenced)
 
     # if influencer is enough influential, tolerance of influential will be modified
 
-    influenced.t = get_influenced_t_after_influence(influenced_t=influenced.t, influencer_t=influencer.t,
-                                                    influenced_a=influenced.a, influencer_a=influencer.a,
-                                                    influenced_d=influenced.d, influencer_d=influencer.d,
-                                                    direction=direction)
+    cell_after_influence.t = get_influenced_t_after_influence(influenced_t=influenced.t, influencer_t=influencer.t,
+                                                              influenced_a=influenced.a, influencer_a=influencer.a,
+                                                              influenced_d=influenced.d, influencer_d=influencer.d,
+                                                              direction=direction)
 
-    return influenced
+    return cell_after_influence
 
 
-def reinforce(influenced: Cell, influencer: Cell, direction: str = "lower") -> Cell:
+def reinforce(influenced: Cell, influencer: Cell, direction) -> Cell:
 
-    if direction not in INFLUENCE_TYPE:
-        raise Exception("direction must be 'lower' or 'bi'")
+    if direction not in REINFORCE_OPTIONS:
+        raise Exception("direction must be among: {}".format(REINFORCE_OPTIONS))
 
-    # if two cells are of same opinion, tolerance stays the same and attack and defence of influenced increase
+    # define brand new cell to avoid changing original
+    cell_after_influence = copy.copy(influenced)
 
-    if abs(influencer.t - influenced.t) < 0.1:
+    cell_after_influence.a = get_influenced_a_after_influence(influenced_t=influenced.t, influencer_t=influencer.t,
+                                                              influenced_a=influenced.a, influencer_a=influencer.a,
+                                                              influenced_d=influenced.d, influencer_d=influencer.d,
+                                                              direction=direction)
 
-        influenced.a += 0.01
+    cell_after_influence.d = get_influenced_d_after_influence(influenced_t=influenced.t, influencer_t=influencer.t,
+                                                              influenced_a=influenced.a, influencer_a=influencer.a,
+                                                              influenced_d=influenced.d, influencer_d=influencer.d,
+                                                              direction=direction)
 
-        influenced.d += 0.01
-
-        influenced.a = round(influenced.a, 2)
-
-        influenced.d = round(influenced.d, 2)
-
-        if influenced.a < 0.0:
-
-            influenced.a = 0.0
-
-        if influenced.a > 1.0:
-
-            influenced.a = 1.0
-
-        if influenced.d < 0.0:
-
-            influenced.d = 0.0
-
-        if influenced.d > 1.0:
-
-            influenced.d = 1.0
-
-    if direction == "bi":
-
-        if abs(influencer.t - influenced.t) > 0.1:
-
-            influenced.a -= 0.01
-
-            influenced.d -= 0.01
-
-            influenced.a = round(influenced.a, 2)
-
-            influenced.d = round(influenced.d, 2)
-
-            if influenced.a < 0.0:
-
-                influenced.a = 0.0
-
-            if influenced.a > 1.0:
-
-                influenced.a = 1.0
-
-            if influenced.d < 0.0:
-
-                influenced.d = 0.0
-
-            if influenced.d > 1.0:
-
-                influenced.d = 1.0
-
-    return influenced
+    return cell_after_influence
 
 
 if __name__ == "__main__":
@@ -319,16 +293,9 @@ if __name__ == "__main__":
     # board = Board(n_cells=9, interaction_step=1, color_gradient=("red", "blue"))
     # board.print_checkboard
 
-    board = CheckBoard(n_cells=100, interaction_step=5, color_gradient=("red", "blue"), start="popper",
-                       start_proportion_intolerant=0.1, share_active=1.0)
+    board = CheckBoard(n_cells=4, interaction_step=1, color_gradient=("red", "blue"), start="popper", share_active=1.0,
+                       start_proportion_intolerant=0.25, reinforce="none", influence="drag_down")
     board.print_checkboard()
-    board.interact_n_times(n_of_interactions=60)
+    board.interact_n_times(n_of_interactions=100)
     # board.print_checkboard()
 
-    # board = Board(n_cells=25, interaction_step=1, color_gradient=("red", "blue"), start="random")
-    # board.interact_n_times(n_of_interactions=1000)
-
-    # influencer = cell(t=0.0, a=1.0, d=1.0)
-    # influenced = cell(t=1.0, a=1.0, d=0.99)
-
-    # influenced_after_influence = influence(influencer=influencer, influenced=influenced, direction="lower")
