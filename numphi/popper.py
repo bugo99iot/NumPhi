@@ -6,7 +6,7 @@ import copy
 
 from numphi.parameters import COLORS_ALLOWED, INFLUENCE_OPTIONS, REINFORCE_OPTIONS
 from numphi.exceptions import CheckBoardException, CellException
-from numphi.utils.popper_utils import is_square, print_checkboard, get_all_combos, get_influenced_t_after_influence, \
+from numphi.utils.popper_utils import is_square, print_checkboard, get_all_combos_with_step, get_influenced_t_after_influence, \
     get_influenced_a_after_influence, get_influenced_d_after_influence
 
 from dotenv import load_dotenv, find_dotenv
@@ -44,19 +44,19 @@ else:
 
 class CheckBoard(object):
 
-    def __init__(self, n_cells: int, interaction_step: int = 1,
+    def __init__(self, total_cells: int, friend_cells: int,
                  start: str = "random", start_proportion_intolerant: float = None, influence: str = "always",
                  reinforce: str = "always", share_active: float = 1.0, cmap: str = "spring"):
 
-        if isinstance(n_cells, int) is False or n_cells < 4 or n_cells > 1000000:
+        if isinstance(total_cells, int) is False or total_cells < 4 or total_cells > 1000000:
 
             raise CheckBoardException("n_cells must be a square number integer n so that 9 <= n <= 1,000,000")
 
-        if is_square(n_cells) is False:
+        if is_square(total_cells) is False:
 
             raise CheckBoardException("n_cells must be a square number")
 
-        self.n_cells = n_cells
+        self.n_cells = total_cells
 
         if share_active is None or isinstance(share_active, float) is False \
                 or (0.0 <= share_active <= 1.0) is False:
@@ -67,17 +67,17 @@ class CheckBoard(object):
 
         self.board_side = int(math.sqrt(self.n_cells))
 
-        if isinstance(interaction_step, int) is False or interaction_step < 1:
+        if friend_cells is None or isinstance(friend_cells, int) is False or friend_cells < 1:
 
-            raise CheckBoardException("interaction_step must be an integer > 0")
+            raise CheckBoardException("friend_cells must be an integer > 0")
 
-        self.interaction_step = interaction_step
+        self.friend_cells = friend_cells
 
-        if interaction_step >= self.board_side - 1:
+        if self.friend_cells >= self.n_cells - 1:
 
-            logging.warning("Interaction step is large. cells interac with full board.")
+            logging.warning("friend_cells is large, each cell will interacts with full board")
 
-            self.interaction_step = self.board_side - 1
+            self.friend_cells = self.n_cells - 1
 
         if reinforce is None or isinstance(reinforce, str) is False or reinforce not in REINFORCE_OPTIONS:
 
@@ -172,6 +172,8 @@ class CheckBoard(object):
 
         new_board = copy.copy(self.checkboard)
 
+        interaction_matrix = build_interaction_matrix(friend_cells=self.friend_cells, share_active=self.share_active, board_side=self.board_side)
+
         for steps in range(n_of_interactions):
 
             step_board = copy.copy(new_board)
@@ -180,8 +182,8 @@ class CheckBoard(object):
 
                 # find all cells being influenced by current cell
 
-                all_combos = get_all_combos(coords=coords, interaction_step=self.interaction_step,
-                                            board_side=self.board_side)
+                all_combos = get_all_combos_with_step(coords=coords, interaction_step=self.interaction_step,
+                                                      board_side=self.board_side)
 
                 if self.share_active < 1.0:
 
@@ -286,7 +288,7 @@ def reinforce(influenced: Cell, influencer: Cell, direction) -> Cell:
 
 if __name__ == "__main__":
 
-    board = CheckBoard(n_cells=100, interaction_step=3, start="popper", share_active=1.0,
+    board = CheckBoard(total_cells=100, interaction_step=3, start="popper", share_active=1.0,
                        start_proportion_intolerant=0.3, reinforce="when_intolerant", influence="drag_down")
     board.print_checkboard()
     board.interact_n_times(n_of_interactions=1000)

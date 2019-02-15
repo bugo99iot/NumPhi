@@ -74,7 +74,7 @@ def print_checkboard(checkboard: np.ndarray, cmap: str, epoch: int) -> None:
     plt.show()"""
 
 
-def get_all_combos(coords: tuple, interaction_step: int, board_side: int) -> list:
+def get_all_combos_with_step(coords: tuple, interaction_step: int, board_side: int) -> list:
     """
 
     :param coords:
@@ -380,3 +380,51 @@ def get_influenced_d_after_influence(influenced_t: float, influencer_t: float,
         return influenced_d
 
     return influenced_d
+
+
+def get_coordinates_of_all_cells(board_side: int) -> list:
+
+    if board_side < 2:
+
+        raise Exception("Board side must be 2 or greater")
+
+    all_coordinates = list()
+
+    for v in range(board_side):
+
+        for h in range(board_side):
+
+            all_coordinates.append((v, h))
+
+    return all_coordinates
+
+
+def build_interaction_matrix(friend_cells: int, share_active: float, board_side: int) -> np.ndarray:
+
+    influence_matrix = np.array([] for _ in range(board_side * board_side)).reshape(board_side, board_side)
+
+    for coords, _ in np.ndenumerate(influence_matrix):
+
+        total_friends = np.array([])
+
+        i = 1
+
+        while total_friends.size < friend_cells:
+
+            new_cells = get_all_combos_with_step(coords=coords, interaction_step=i, board_side=board_side)
+
+            # shuffle and append to total friends
+
+            i += 2
+
+        # reshape total friends to array and cut at end
+
+
+        influence_matrix[coords] = cells_to_interact
+
+        return None
+        # np.random.shuffle(self.checkboard)
+
+
+
+
