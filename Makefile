@@ -14,8 +14,9 @@ freeze: ## Freeze requirements
 	pip freeze > requirements.txt
 
 .PHONY: test
-test: ## run pytest on local machine, you must be in pwd = numphi root
-	pytest -vv -s -q
+test: ## run pytest on local machine
+	. venv/bin/activate && cd numphi && pytest -vv -s -q
+
 
 .PHONY: pip-deploy
 pip-deploy: ## Deploy package to pip universe

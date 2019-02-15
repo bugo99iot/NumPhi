@@ -5,7 +5,7 @@ import random
 
 from numphi.parameters import COLORS_ALLOWED, INFLUENCE_TYPE
 from numphi.exceptions import CheckBoardException, CellException
-from numphi.utils import is_square, print_checkboard, get_all_combos
+from numphi.utils.popper_utils import is_square, print_checkboard, get_all_combos, get_influenced_t_after_influence
 
 from dotenv import load_dotenv, find_dotenv
 import os
@@ -42,6 +42,8 @@ else:
 
 # todo: def function for t change when influencer.a > influenced.d
 
+# todo add more start like half or bands or circles
+
 class CheckBoard(object):
 
     def __init__(self, n_cells: int, interaction_step: int = 1, color_gradient: tuple = ("red", "blue"),
@@ -53,6 +55,7 @@ class CheckBoard(object):
             raise CheckBoardException("n_cells must be a square number integer n so that 9 <= n <= 1,000,000")
 
         if is_square(n_cells) is False:
+
             raise CheckBoardException("n_cells must be a square number")
 
         self.n_cells = n_cells
@@ -67,6 +70,7 @@ class CheckBoard(object):
         self.board_side = int(math.sqrt(self.n_cells))
 
         if isinstance(interaction_step, int) is False or interaction_step < 1:
+
             raise CheckBoardException("interaction_step must be an integer > 0")
 
         self.interaction_step = interaction_step
@@ -121,7 +125,7 @@ class CheckBoard(object):
             if start_proportion_intolerant is None:
 
                 raise CheckBoardException("If you choose Popper as start, you need to set start_proportion variable, "
-                                     "e.g. start_proportion=0.9")
+                                          "e.g. start_proportion=0.9")
 
             n_intolerant = int(start_proportion_intolerant * self.n_cells)
 
@@ -171,16 +175,16 @@ class CheckBoard(object):
 
             for coords, cell in np.ndenumerate(self.checkboard):
 
-                # find all cells being infulenced by current cell
+                # find all cells being influenced by current cell
 
-                all_combos = get_all_combos(coords=coords, range=self.interaction_step, board_side=self.board_side)
+                all_combos = get_all_combos(coords=coords, interaction_step=self.interaction_step, board_side=self.board_side)
 
                 if self.share_active < 1.0:
 
                     # todo: make elegant
-                    cut_index = random.randint(0, int(round(self.share_active*100.0))) / 100.0 * len(all_combos)
+                    cut_index = int(round(random.uniform(self.share_active, 1.0) * len(all_combos)))
 
-                    all_combos = all_combos[:round(int(cut_index))]
+                    all_combos = all_combos[:cut_index]
 
                 for combo in all_combos:
 
@@ -208,6 +212,22 @@ class Cell(object):
         :param r: range
         """
 
+        if isinstance(t, float) is False or (0.0 <= t <= 1.0) is False:
+
+            raise CellException("t must be a float between 0.0 and 1.0")
+
+        if isinstance(a, float) is False or (0.0 <= a <= 1.0) is False:
+
+            raise CellException("a must be a float between 0.0 and 1.0")
+
+        if isinstance(d, float) is False or (0.0 <= d <= 1.0) is False:
+
+            raise CellException("d must be a float between 0.0 and 1.0")
+
+        if isinstance(r, int) is False or r < 1:
+
+            raise CellException("r must be int >= 1")
+
         self.t = t
         self.a = a
         self.d = d
@@ -219,48 +239,12 @@ def influence(influenced: Cell, influencer: Cell, direction: str = "lower", rein
     if direction not in INFLUENCE_TYPE:
         raise Exception("direction must be 'lower' or 'bi'")
 
-    # if two cells are of same opinion, tolerance stays the same and attack and defence of influenced increase
+    # if influencer is enough influential, tolerance of influential will be modified
 
-    if influencer.a > influenced.d:
-
-        if influencer.t < influenced.t:
-
-            amount = round((influenced.t - influencer.t)/10.0, 2)
-
-            if amount < 0.01:
-
-                amount = 0.01
-
-            influenced.t -= amount
-
-            influenced.t = round(influenced.t, 2)
-
-            if influenced.t > 1.0:
-
-                influenced.t = 1.0
-
-            if influenced.t < 0.0:
-
-                influenced.t = 0.0
-
-        else:
-
-            if direction == "bi":
-
-                amount = round((influencer.t - influenced.t) / 10.0, 2)
-
-                if amount < 0.01:
-                    amount = 0.01
-
-                influenced.t += amount
-
-                influenced.t = round(influenced.t, 2)
-
-                if influenced.t > 1.0:
-                    influenced.t = 1.0
-
-                if influenced.t < 0.0:
-                    influenced.t = 0.0
+    influenced.t = get_influenced_t_after_influence(influenced_t=influenced.t, influencer_t=influencer.t,
+                                                    influenced_a=influenced.a, influencer_a=influencer.a,
+                                                    influenced_d=influenced.d, influencer_d=influencer.d,
+                                                    direction=direction)
 
     return influenced
 
@@ -335,8 +319,8 @@ if __name__ == "__main__":
     # board = Board(n_cells=9, interaction_step=1, color_gradient=("red", "blue"))
     # board.print_checkboard
 
-    board = CheckBoard(n_cells=16, interaction_step=3, color_gradient=("red", "blue"), start="random",
-                       start_proportion_intolerant=0.9, share_active=0.5)
+    board = CheckBoard(n_cells=100, interaction_step=5, color_gradient=("red", "blue"), start="popper",
+                       start_proportion_intolerant=0.1, share_active=1.0)
     board.print_checkboard()
     board.interact_n_times(n_of_interactions=60)
     # board.print_checkboard()
