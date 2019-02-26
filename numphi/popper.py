@@ -4,10 +4,11 @@ import math as math
 import random
 import copy
 
-from numphi.parameters import COLORS_ALLOWED, INFLUENCE_OPTIONS, REINFORCE_OPTIONS
+from numphi.parameters import INFLUENCE_OPTIONS, REINFORCE_OPTIONS
 from numphi.exceptions import CheckBoardException, CellException
-from numphi.utils.popper_utils import is_square, print_checkboard, get_influenced_t_after_influence, \
-    get_influenced_a_after_influence, get_influenced_d_after_influence, offset_to_axial
+from numphi.utils.popper_utils import is_square, get_influenced_t_after_influence, \
+    get_influenced_a_after_influence, get_influenced_d_after_influence, offset_to_axial, build_interaction_matrix, \
+    plot_hextile
 
 from dotenv import load_dotenv, find_dotenv
 import os
@@ -48,7 +49,7 @@ class CheckBoard(object):
 
     def __init__(self, total_cells: int, friend_cells: int,
                  start: str = "random", start_proportion_intolerant: float = None, influence: str = "always",
-                 reinforce: str = "always", share_active: float = 1.0, cmap: str = "spring"):
+                 reinforce: str = "always", share_active: float = 1.0):
 
         if isinstance(total_cells, int) is False or total_cells < 4 or total_cells > 1000000:
 
@@ -93,13 +94,6 @@ class CheckBoard(object):
 
         self.influence = influence
 
-        if cmap is None or isinstance(cmap, str) is False:
-
-            raise CheckBoardException("cmap must be one of the following: https://matplotlib.org/examples/color/colormap"
-                                      "s_reference.html")
-
-        self.cmap = cmap
-
         # todo: check start
 
         self.start = start.lower() if start is not None else None
@@ -113,6 +107,8 @@ class CheckBoard(object):
 
                 raise CheckBoardException("start_proportion must be a number between 0.0 and 1.0")
 
+        # todo: decide q and r where it goes, in cell or in index
+
         if start == "random":
 
             self.checkboard = np.array([Cell(t=round(random.random(), 2),
@@ -121,8 +117,6 @@ class CheckBoard(object):
                                         range(self.n_cells)])
 
             np.random.shuffle(self.checkboard)
-
-            self.checkboard = self.checkboard.reshape(self.board_side, self.board_side)
 
         elif start == "popper":
 
@@ -141,11 +135,9 @@ class CheckBoard(object):
 
             tol = np.array([Cell(t=1.0, a=0.0, d=0.0) for _ in range(n_tolerant)])
 
-            intol_tol = np.concatenate((intol, tol), axis=0)
+            self.checkboard = np.concatenate((intol, tol), axis=0)
 
-            np.random.shuffle(intol_tol)
-
-            self.checkboard = intol_tol.reshape(self.board_side, self.board_side)
+            np.random.shuffle(self.checkboard)
 
         else:
 
@@ -158,7 +150,7 @@ class CheckBoard(object):
         :return:
         """
 
-        print_checkboard(checkboard=self.checkboard, cmap=self.cmap, epoch="manual")
+        plot_hextile(self.checkboard)
 
         return None
 
@@ -174,7 +166,9 @@ class CheckBoard(object):
 
         new_board = copy.copy(self.checkboard)
 
-        interaction_matrix = build_interaction_matrix(friend_cells=self.friend_cells, share_active=self.share_active, board_side=self.board_side)
+        interaction_matrix = build_interaction_matrix(friend_cells=self.friend_cells,
+                                                      share_active=self.share_active,
+                                                      board_side=self.board_side)
 
         for steps in range(n_of_interactions):
 
@@ -184,20 +178,7 @@ class CheckBoard(object):
 
                 # find all cells being influenced by current cell
 
-                all_combos = get_all_combos_with_step(coords=coords, interaction_step=self.interaction_step,
-                                                      board_side=self.board_side)
-
-                if self.share_active < 1.0:
-
-                    # todo: make elegant
-                    cut_index = int(round(random.uniform(self.share_active, 1.0) * len(all_combos)))
-
-                    # each cell should interact at least with one cell
-                    if cut_index == 0:
-
-                        cut_index = 1
-
-                    all_combos = all_combos[:cut_index]
+                all_combos = interaction_matrix[coords]
 
                 for combo in all_combos:
 
@@ -208,8 +189,6 @@ class CheckBoard(object):
                     step_board[combo] = influenced
 
             new_board = copy.copy(step_board)
-
-            #print_checkboard(checkboard=new_board, cmap=self.cmap, epoch=steps+1)
 
         self.checkboard = new_board
 
@@ -296,7 +275,7 @@ def reinforce(influenced: Cell, influencer: Cell, direction) -> Cell:
 
 if __name__ == "__main__":
 
-    board = CheckBoard(total_cells=100, interaction_step=3, start="popper", share_active=1.0,
+    board = CheckBoard(total_cells=9, friend_cells=3, start="popper", share_active=1.0,
                        start_proportion_intolerant=0.3, reinforce="when_intolerant", influence="drag_down")
     board.print_checkboard()
     board.interact_n_times(n_of_interactions=1000)

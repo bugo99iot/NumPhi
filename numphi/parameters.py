@@ -1,7 +1,4 @@
 
-# define a list of color allowed fro gradient construction
-COLORS_ALLOWED = ["red", "green", "blue"]
-
 # define types of influence
 # "drag_down": tolerance of the influenced will descrese if tolerance of influencer is lower
 # "drag_up": tolerance of the influenced will inscrese if tolerance of influencer is higer

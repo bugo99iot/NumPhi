@@ -425,6 +425,8 @@ def build_interaction_matrix(friend_cells: int, share_active: float, board_side:
 
         influence_matrix[coords] = current_friends
 
+    return influence_matrix
+
 
 def offset_to_axial(coords: tuple) -> tuple:
     """
@@ -438,16 +440,13 @@ def offset_to_axial(coords: tuple) -> tuple:
     return coords[0] - math.floor(coords[1] / 2.0), coords[1]
 
 
-def plot_hextile():
+def plot_hextile(list_of_cells):
 
-    points_offest = [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (2, 0), (2, 1), (2, 2)]
-    points_axial = [offset_to_axial(k) for k in points_offest]
-
-    r = [k[0] for k in points_axial]
-    q = [k[1] for k in points_axial]
-    t = [0.1, 0.1, 0.1, 0, 0, 0, 0, 1, 0]
-    a = [0, 0, 0, 0, 0, 0, 0.5]
-    d = [0, 0, 0, 0, 0, 0, 0.5]
+    r_axial = [c.r_axial for c in list_of_cells]
+    q_axial = [c.q_axial for c in list_of_cells]
+    t = [c.t for c in list_of_cells]
+    a = [c.a for c in list_of_cells]
+    d = [c.d for c in list_of_cells]
 
     r = np.array(r)
     q = np.array(q)
@@ -461,8 +460,8 @@ def plot_hextile():
     plot = figure(title=None, match_aspect=True)
 
     source = ColumnDataSource(data=dict(
-        q=q,
-        r=r,
+        q=q_axial,
+        r=r_axial,
         c=t,
         a=a,
         d=d))
