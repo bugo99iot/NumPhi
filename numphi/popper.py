@@ -113,10 +113,11 @@ class CheckBoard(object):
 
             self.checkboard = np.array([Cell(t=round(random.random(), 2),
                                              a=round(random.random(), 2),
-                                             d=round(random.random(), 2)) for _ in
-                                        range(self.n_cells)])
+                                             d=round(random.random(), 2)) for _ in range(self.n_cells)])
 
             np.random.shuffle(self.checkboard)
+
+            self.checkboard = self.checkboard.reshape(self.board_side, self.board_side)
 
         elif start == "popper":
 
@@ -138,6 +139,8 @@ class CheckBoard(object):
             self.checkboard = np.concatenate((intol, tol), axis=0)
 
             np.random.shuffle(self.checkboard)
+
+            self.checkboard = self.checkboard.reshape(self.board_side, self.board_side)
 
         else:
 
@@ -197,15 +200,13 @@ class CheckBoard(object):
 
 class Cell(object):
 
-    def __init__(self, r, q, t: float, a: float, d: float, reach: int = 1):
+    def __init__(self, t: float, a: float, d: float, r: float = 1):
         """
 
-        :param r: r-coord in odd-q offset coordinates
-        :param q: q-coord in odd-q offset coordinates
         :param t: tolerance
         :param a: attack
         :param d: defense
-        :param reach: reach
+        :param r: r
         """
 
         if isinstance(t, float) is False or (0.0 <= t <= 1.0) is False:
@@ -220,18 +221,15 @@ class Cell(object):
 
             raise CellException("d must be a float between 0.0 and 1.0")
 
-        if isinstance(reach, int) is False or reach < 1:
+        if isinstance(r, int) is False or r < 1:
 
-            raise CellException("ra must be int >= 1")
+            raise CellException("r must be int >= 1")
 
         self.t = t
         self.a = a
         self.d = d
         self.r = r
-        self.q = q
 
-        # the correspondant axial coordinates, used for plotting
-        self.r_axial, self.q_axial = offset_to_axial(coords=(r, q))
 
 
 def influence(influenced: Cell, influencer: Cell, direction: str) -> Cell:
@@ -278,5 +276,5 @@ if __name__ == "__main__":
     board = CheckBoard(total_cells=9, friend_cells=3, start="popper", share_active=1.0,
                        start_proportion_intolerant=0.3, reinforce="when_intolerant", influence="drag_down")
     board.print_checkboard()
-    board.interact_n_times(n_of_interactions=1000)
-    board.print_checkboard()
+    #board.interact_n_times(n_of_interactions=1000)
+    #board.print_checkboard()

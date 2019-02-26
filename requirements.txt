@@ -8,7 +8,6 @@ kiwisolver==1.0.1
 MarkupSafe==1.1.0
 matplotlib==3.0.2
 more-itertools==6.0.0
--e git+https://github.com/bugo99iot/NumPhi.git@2afabfc953f2b9599418e9970e036581f97fa94d#egg=NumPhi
 numpy==1.16.1
 packaging==19.0
 Pillow==5.4.1

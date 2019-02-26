@@ -9,6 +9,8 @@ from bokeh.models import HoverTool
 from bokeh.models.sources import ColumnDataSource
 from bokeh.transform import linear_cmap
 from bokeh.palettes import Plasma256 as palette  # this import will will be highlighted by PyCharm, ignore it
+from numpy.core._multiarray_umath import ndarray
+
 from numphi.parameters import INFLUENCE_OPTIONS, REINFORCE_OPTIONS
 from typing import List
 import logging
@@ -440,22 +442,22 @@ def offset_to_axial(coords: tuple) -> tuple:
     return coords[0] - math.floor(coords[1] / 2.0), coords[1]
 
 
-def plot_hextile(list_of_cells):
+def plot_hextile(checkboard: np.ndarray):
 
-    r_axial = [c.r_axial for c in list_of_cells]
-    q_axial = [c.q_axial for c in list_of_cells]
-    t = [c.t for c in list_of_cells]
-    a = [c.a for c in list_of_cells]
-    d = [c.d for c in list_of_cells]
+    data = [(coords, cell.t, cell.a, cell.d) for coords, cell in np.ndenumerate(checkboard)]
 
-    r = np.array(r)
-    q = np.array(q)
-    t = np.array(t)
+    coords_offset, t, a, d = list(zip(*data))
+
+    coords_axial = [offset_to_axial(c) for c in coords_offset]
+
+    r_axial, q_axial = list(zip(*coords_axial))
+
+    r_axial: ndarray = np.array(r_axial)
+    q_axial: ndarray = np.array(q_axial)
+    t: ndarray = np.array(t)
 
     size = 0.5
     orientation = "flattop"
-
-    #df = pd.DataFrame(dict(r=r.astype(int), q=q.astype(int)))
 
     plot = figure(title=None, match_aspect=True)
 
