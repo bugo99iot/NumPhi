@@ -10,6 +10,7 @@ matplotlib==3.0.2
 more-itertools==6.0.0
 numpy==1.16.1
 packaging==19.0
+pandas==0.24.1
 Pillow==5.4.1
 pluggy==0.8.1
 py==1.7.0
@@ -17,6 +18,7 @@ pyparsing==2.3.1
 pytest==4.2.1
 python-dateutil==2.7.5
 python-dotenv==0.10.1
+pytz==2018.9
 PyYAML==3.13
 six==1.12.0
 tornado==5.1.1

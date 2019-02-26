@@ -231,7 +231,6 @@ class Cell(object):
         self.r = r
 
 
-
 def influence(influenced: Cell, influencer: Cell, direction: str) -> Cell:
 
     if direction not in INFLUENCE_OPTIONS:
@@ -273,7 +272,7 @@ def reinforce(influenced: Cell, influencer: Cell, direction) -> Cell:
 
 if __name__ == "__main__":
 
-    board = CheckBoard(total_cells=9, friend_cells=3, start="popper", share_active=1.0,
+    board = CheckBoard(total_cells=10000, friend_cells=3, start="random", share_active=1.0,
                        start_proportion_intolerant=0.3, reinforce="when_intolerant", influence="drag_down")
     board.print_checkboard()
     #board.interact_n_times(n_of_interactions=1000)

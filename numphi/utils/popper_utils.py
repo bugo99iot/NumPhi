@@ -1,14 +1,12 @@
 import math
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 import random
 
 from bokeh.plotting import figure, output_file, show
-from bokeh.models import HoverTool
+from bokeh.models import HoverTool, ColorBar, ColorMapper, Ticker
 from bokeh.models.sources import ColumnDataSource
 from bokeh.transform import linear_cmap
-from bokeh.palettes import Plasma256 as palette  # this import will will be highlighted by PyCharm, ignore it
+from bokeh.palettes import Viridis256 as palette  # this import will will be highlighted by PyCharm, ignore it
 from numpy.core._multiarray_umath import ndarray
 
 from numphi.parameters import INFLUENCE_OPTIONS, REINFORCE_OPTIONS
@@ -459,7 +457,18 @@ def plot_hextile(checkboard: np.ndarray):
     size = 0.5
     orientation = "flattop"
 
-    plot = figure(title=None, match_aspect=True)
+    t_tolerant = t[t > 0.5]
+
+    if (t.size - t_tolerant.size) / t.size >= 0.5:
+
+        title = "Intolerant"
+
+    else:
+        title = "Tolerant"
+
+    p = figure(title=title, match_aspect=True, tools="wheel_zoom,reset", plot_width=500, plot_height=500)
+
+    p.title.align = 'center'
 
     source = ColumnDataSource(data=dict(
         q=q_axial,
@@ -468,11 +477,19 @@ def plot_hextile(checkboard: np.ndarray):
         a=a,
         d=d))
 
-    plot.hex_tile(q="q", r="r", size=size,
-                  fill_color=linear_cmap('c', palette, 0.0, 1.0),
-                  line_color=None, source=source, orientation=orientation)
+    p.hex_tile(q="q", r="r", size=size,
+               fill_color=linear_cmap('c', palette, 0.0, 1.0),
+               line_color=None, source=source, orientation=orientation)
 
-    hover = HoverTool(tooltips=[("tolerance", "@t"), ("attack", "@a"), ("defense", "@d")])
-    plot.add_tools(hover)
+    p.xaxis.visible = False
+    p.yaxis.visible = False
 
-    show(plot)
+    #p.background_fill_color = '#440154'
+    p.grid.visible = False
+
+    hover = HoverTool(tooltips=[("tolerance", "@c"), ("attack", "@a"), ("defence", "@d")])
+
+    p.add_tools(hover)
+
+
+    show(p)
