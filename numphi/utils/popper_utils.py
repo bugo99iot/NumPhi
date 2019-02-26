@@ -1,9 +1,26 @@
 import math
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import random
 
+from bokeh.plotting import figure, output_file, show
+from bokeh.models import HoverTool
+from bokeh.models.sources import ColumnDataSource
+from bokeh.transform import linear_cmap
+from bokeh.palettes import Plasma256 as palette  # this import will will be highlighted by PyCharm, ignore it
 from numphi.parameters import INFLUENCE_OPTIONS, REINFORCE_OPTIONS
+from typing import List
+import logging
+import os
+
+# define logging level
+logger = logging.getLogger(__name__)
+
+if os.getenv('ENV') in ['staging', 'production']:
+    logging.basicConfig(level=logging.WARNING)
+else:
+    logging.basicConfig(level=logging.INFO)
 
 
 def is_square(integer: int):
@@ -23,96 +40,6 @@ def is_square(integer: int):
     else:
 
         return False
-
-
-def print_checkboard(checkboard: np.ndarray, cmap: str, epoch: int) -> None:
-    """
-
-    :param checkboard:
-    :param colors:
-    :return:
-    """
-
-    # todo: show in plot epoch and abs number of tol / intol defined with 0.5 threshold
-
-    side = checkboard.shape[0]
-
-    checkboard_linear = checkboard.reshape(-1)
-
-    checkboard_tolerance = np.array([k.t for k in checkboard_linear]).reshape(side, side)
-
-    checkboard_attack = np.array([k.a for k in checkboard_linear]).reshape(side, side)
-
-    checkboard_defense = np.array([k.d for k in checkboard_linear]).reshape(side, side)
-
-    plt.figure(1)
-
-    plt.subplot(121)
-    plt.imshow(checkboard_tolerance, vmin=0.0, vmax=1.0, cmap=cmap)
-    plt.gca().set_title("Tolerance")
-
-    plt.xticks([])
-    plt.yticks([])
-
-    plt.subplot(122)
-
-    plt.imshow(checkboard_attack, vmin=0.0, vmax=1.0, cmap=cmap)
-
-    plt.gca().set_title("Attack")
-
-    plt.xticks([])
-    plt.yticks([])
-
-    plt.suptitle("Epoch: {}".format(epoch))
-
-    plt.show()
-
-    """    plt.imshow(checkboard_tolerance, vmin=0.0, vmax=1.0, cmap=cmap)
-
-    plt.suptitle("Epoch: {}".format(epoch))
-
-    plt.show()"""
-
-
-def get_all_combos_with_step(coords: tuple, interaction_step: int, board_side: int) -> list:
-    """
-
-    :param coords:
-    :param interaction_step:
-    :param board_side:
-    :return:
-    """
-
-    if coords[0] >= board_side or coords[1] >= board_side:
-
-        raise Exception("Coords leger than board side for coords: {}".format(coords))
-
-    hr = np.arange(coords[0] - interaction_step, coords[0] + interaction_step + 1)
-
-    vr = np.arange(coords[1] - interaction_step, coords[1] + interaction_step + 1)
-
-    combos = list()
-
-    for h in hr:
-
-        if h < 0 or h >= board_side:
-
-            continue
-
-        for v in vr:
-
-            if v < 0 or v >= board_side:
-                continue
-
-            if (h, v) == coords:
-
-                continue
-
-            combos.append((h, v))
-
-    random.shuffle(combos)
-
-    return combos
 
 
 def bound_value(value: float):
@@ -382,6 +309,54 @@ def get_influenced_d_after_influence(influenced_t: float, influencer_t: float,
     return influenced_d
 
 
+def get_all_neighbours_for_cell(coords: tuple) -> List[tuple]:
+    # if y coordinate is even
+
+    if coords[1] % 2 == 0:
+
+        variations = [(0, -1), (-1, 0), (0, 1), (1, 0), (1, -1), (-1, -1)]
+
+        cell_friends = list()
+
+        for v in variations:
+            new_coord = coords[0] + v[0], coords[1] + v[1]
+
+            cell_friends.append(new_coord)
+
+        # we need some extra juggling here to make sure that cells near the edge have as many friends as possible
+
+        cell_friends_negative = [k for k in cell_friends if k[0] < 0 or k[1] < 0]
+        cell_friends_positive = [k for k in cell_friends if k not in cell_friends_negative]
+
+        random.shuffle(cell_friends_negative)
+        random.shuffle(cell_friends_positive)
+
+        yield cell_friends_positive + cell_friends_negative
+
+    # if y coordinate is odd
+
+    else:
+
+        variations = [(0, -1), (-1, 0), (0, 1), (1, 0), (-1, 1), (1, 1)]
+
+        cell_friends = list()
+
+        for v in variations:
+            new_coord = coords[0] + v[0], coords[1] + v[1]
+
+            cell_friends.append(new_coord)
+
+        # we need some extra juggling here to make sure that cells near the edge have as many friends as possible
+
+        cell_friends_negative = [k for k in cell_friends if k[0] < 0 or k[1] < 0]
+        cell_friends_positive = [k for k in cell_friends if k not in cell_friends_negative]
+
+        random.shuffle(cell_friends_negative)
+        random.shuffle(cell_friends_positive)
+
+        yield cell_friends_positive + cell_friends_negative
+
+
 def get_coordinates_of_all_cells(board_side: int) -> list:
 
     if board_side < 2:
@@ -399,32 +374,104 @@ def get_coordinates_of_all_cells(board_side: int) -> list:
     return all_coordinates
 
 
+def generate_n_friends(center: tuple, board_side: int) -> List[tuple]:
+
+    friends = list()
+
+    starting_cells = [center]
+
+    for step in range(0, board_side - 1):
+
+        step_neighbours = list()
+
+        for cell in starting_cells:
+
+            cell_neighbours = get_all_neighbours_for_cell(coords=cell)
+
+            for neighbour in cell_neighbours:
+
+                if neighbour not in friends and neighbour != center:
+
+                    step_neighbours.append(neighbour)
+
+                    friends.append(neighbour)
+
+                    yield neighbour
+
+            starting_cells = step_neighbours
+
+
 def build_interaction_matrix(friend_cells: int, share_active: float, board_side: int) -> np.ndarray:
+
+    if friend_cells > int(board_side**2):
+
+        logging.warning("Friend cells > board size, friend cells will be board size -1")
+
+        friend_cells = int(board_side**2) - 1
 
     influence_matrix = np.array([] for _ in range(board_side * board_side)).reshape(board_side, board_side)
 
     for coords, _ in np.ndenumerate(influence_matrix):
 
-        total_friends = np.array([])
+        current_friends = list()
 
-        i = 1
+        for i in range(friend_cells):
 
-        while total_friends.size < friend_cells:
+            new_cell = generate_n_friends(center=coords, board_side=board_side)
 
-            new_cells = get_all_combos_with_step(coords=coords, interaction_step=i, board_side=board_side)
+            if new_cell[0] >= 0 and new_cell[1] >= 0:
 
-            # shuffle and append to total friends
+                current_friends.append(new_cell)
 
-            i += 2
-
-        # reshape total friends to array and cut at end
+        influence_matrix[coords] = current_friends
 
 
-        influence_matrix[coords] = cells_to_interact
+def offset_to_axial(coords: tuple) -> tuple:
+    """
+    Convert odd-q offset coordinates to axial coordinates (needed by Bokeh)
+    see https://www.redblobgames.com/grids/hexagons/
 
-        return None
-        # np.random.shuffle(self.checkboard)
+    :param coords: e.g. (0, 1)
+    :return:
+    """
+
+    return coords[0] - math.floor(coords[1] / 2.0), coords[1]
 
 
+def plot_hextile():
 
+    points_offest = [(0, 0), (0, 1), (0, 2), (1, 0), (1, 1), (1, 2), (2, 0), (2, 1), (2, 2)]
+    points_axial = [offset_to_axial(k) for k in points_offest]
 
+    r = [k[0] for k in points_axial]
+    q = [k[1] for k in points_axial]
+    t = [0.1, 0.1, 0.1, 0, 0, 0, 0, 1, 0]
+    a = [0, 0, 0, 0, 0, 0, 0.5]
+    d = [0, 0, 0, 0, 0, 0, 0.5]
+
+    r = np.array(r)
+    q = np.array(q)
+    t = np.array(t)
+
+    size = 0.5
+    orientation = "flattop"
+
+    #df = pd.DataFrame(dict(r=r.astype(int), q=q.astype(int)))
+
+    plot = figure(title=None, match_aspect=True)
+
+    source = ColumnDataSource(data=dict(
+        q=q,
+        r=r,
+        c=t,
+        a=a,
+        d=d))
+
+    plot.hex_tile(q="q", r="r", size=size,
+                  fill_color=linear_cmap('c', palette, 0.0, 1.0),
+                  line_color=None, source=source, orientation=orientation)
+
+    hover = HoverTool(tooltips=[("tolerance", "@t"), ("attack", "@a"), ("defense", "@d")])
+    plot.add_tools(hover)
+
+    show(plot)

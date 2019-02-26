@@ -6,8 +6,8 @@ import copy
 
 from numphi.parameters import COLORS_ALLOWED, INFLUENCE_OPTIONS, REINFORCE_OPTIONS
 from numphi.exceptions import CheckBoardException, CellException
-from numphi.utils.popper_utils import is_square, print_checkboard, get_all_combos_with_step, get_influenced_t_after_influence, \
-    get_influenced_a_after_influence, get_influenced_d_after_influence
+from numphi.utils.popper_utils import is_square, print_checkboard, get_influenced_t_after_influence, \
+    get_influenced_a_after_influence, get_influenced_d_after_influence, offset_to_axial
 
 from dotenv import load_dotenv, find_dotenv
 import os
@@ -41,6 +41,8 @@ else:
 # todo: develop plot with slider
 
 # todo add more start like half or bands or circles
+
+# fix colormap
 
 class CheckBoard(object):
 
@@ -216,13 +218,15 @@ class CheckBoard(object):
 
 class Cell(object):
 
-    def __init__(self, t: float, a: float, d: float, r: int = 1):
+    def __init__(self, r, q, t: float, a: float, d: float, reach: int = 1):
         """
 
+        :param r: r-coord in odd-q offset coordinates
+        :param q: q-coord in odd-q offset coordinates
         :param t: tolerance
         :param a: attack
         :param d: defense
-        :param r: range
+        :param reach: reach
         """
 
         if isinstance(t, float) is False or (0.0 <= t <= 1.0) is False:
@@ -237,14 +241,18 @@ class Cell(object):
 
             raise CellException("d must be a float between 0.0 and 1.0")
 
-        if isinstance(r, int) is False or r < 1:
+        if isinstance(reach, int) is False or reach < 1:
 
-            raise CellException("r must be int >= 1")
+            raise CellException("ra must be int >= 1")
 
         self.t = t
         self.a = a
         self.d = d
         self.r = r
+        self.q = q
+
+        # the correspondant axial coordinates, used for plotting
+        self.r_axial, self.q_axial = offset_to_axial(coords=(r, q))
 
 
 def influence(influenced: Cell, influencer: Cell, direction: str) -> Cell:
