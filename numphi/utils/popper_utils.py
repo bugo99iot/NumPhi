@@ -499,4 +499,6 @@ def plot_cell_friends_hextile(center: tuple, board_side):
 
     checkboard = np.array([0.0 for _ in range(n_cells)]).reshape
 
+    # color 0.0 target, 0.5 friends, 1.0 others
+
     return None
