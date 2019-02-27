@@ -487,6 +487,10 @@ def plot_hextile(checkboard: np.ndarray):
     #p.background_fill_color = '#440154'
     p.grid.visible = False
 
+    path_one_up = "/".join(os.path.dirname(os.path.realpath(__file__)).split("/")[:-1]) + "/sample_data"
+
+    output_file(path_one_up + "/demo_hextile.html")
+
     hover = HoverTool(tooltips=[("tolerance", "@c"), ("attack", "@a"), ("defence", "@d")])
 
     p.add_tools(hover)
