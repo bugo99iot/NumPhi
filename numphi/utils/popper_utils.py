@@ -309,12 +309,15 @@ def get_influenced_d_after_influence(influenced_t: float, influencer_t: float,
     return influenced_d
 
 
-def get_all_neighbours_for_cell(coords: tuple) -> List[tuple]:
+def get_all_neighbours_for_cell(coords: tuple, board_side: int) -> List[tuple]:
+
+    # todo: this can be heavely optimised
+
     # if y coordinate is even
 
     if coords[1] % 2 == 0:
 
-        variations = [(0, -1), (-1, 0), (0, 1), (1, 0), (1, -1), (-1, -1)]
+        variations = [(0, -1), (-1, 0), (0, 1), (1, 0), (-1, 1), (-1, -1)]
 
         cell_friends = list()
 
@@ -325,19 +328,18 @@ def get_all_neighbours_for_cell(coords: tuple) -> List[tuple]:
 
         # we need some extra juggling here to make sure that cells near the edge have as many friends as possible
 
-        cell_friends_negative = [k for k in cell_friends if k[0] < 0 or k[1] < 0]
-        cell_friends_positive = [k for k in cell_friends if k not in cell_friends_negative]
+        cell_friends_outside_board = [k for k in cell_friends if k[0] < 0 or k[0] >= board_side or k[1] < 0 or k[1] >= board_side]
+        cell_friends_inside_board = [k for k in cell_friends if k not in cell_friends_outside_board]
 
-        random.shuffle(cell_friends_negative)
-        random.shuffle(cell_friends_positive)
+        random.shuffle(cell_friends_inside_board)
 
-        return cell_friends_positive + cell_friends_negative
+        return cell_friends_inside_board + cell_friends_outside_board
 
     # if y coordinate is odd
 
     else:
 
-        variations = [(0, -1), (-1, 0), (0, 1), (1, 0), (-1, 1), (1, 1)]
+        variations = [(0, -1), (-1, 0), (0, 1), (1, 0), (1, -1), (1, 1)]
 
         cell_friends = list()
 
@@ -348,13 +350,12 @@ def get_all_neighbours_for_cell(coords: tuple) -> List[tuple]:
 
         # we need some extra juggling here to make sure that cells near the edge have as many friends as possible
 
-        cell_friends_negative = [k for k in cell_friends if k[0] < 0 or k[1] < 0]
-        cell_friends_positive = [k for k in cell_friends if k not in cell_friends_negative]
+        cell_friends_outside_board = [k for k in cell_friends if k[0] < 0 or k[0] >= board_side or k[1] < 0 or k[1] >= board_side]
+        cell_friends_inside_board = [k for k in cell_friends if k not in cell_friends_outside_board]
 
-        random.shuffle(cell_friends_negative)
-        random.shuffle(cell_friends_positive)
+        random.shuffle(cell_friends_inside_board)
 
-        return cell_friends_positive + cell_friends_negative
+        return cell_friends_inside_board + cell_friends_outside_board
 
 
 def generate_n_friends(center: tuple, board_side: int) -> List[tuple]:
@@ -369,9 +370,10 @@ def generate_n_friends(center: tuple, board_side: int) -> List[tuple]:
 
         for cell in starting_cells:
 
-            for neighbour in get_all_neighbours_for_cell(coords=cell):
+            for neighbour in get_all_neighbours_for_cell(coords=cell, board_side=board_side):
 
                 if neighbour not in friends and neighbour != center:
+
                     step_neighbours.append(neighbour)
 
                     friends.append(neighbour)
@@ -399,8 +401,6 @@ def build_interaction_matrix(friend_cells: int, share_active: float, board_side:
 
         for new_cell in generate_n_friends(center=coords, board_side=board_side):
 
-            # todo: fix issue, bottom right corner cell must have max friends
-
             if 0 <= new_cell[0] < board_side and 0 <= new_cell[1] < board_side:
 
                 current_friends.append(new_cell)
@@ -418,14 +418,14 @@ def build_interaction_matrix(friend_cells: int, share_active: float, board_side:
 
 def offset_to_axial(coords: tuple) -> tuple:
     """
-    Convert odd-q offset coordinates to axial coordinates (needed by Bokeh)
+    Convert odd-r offset coordinates to axial coordinates (needed by Bokeh)
     see https://www.redblobgames.com/grids/hexagons/
 
     :param coords: e.g. (0, 1)
     :return:
     """
 
-    return coords[0] - math.floor(coords[1] / 2.0), coords[1]
+    return coords[1], coords[0] - math.floor(coords[1] / 2.0)
 
 
 def plot_hextile(checkboard: np.ndarray):
@@ -433,6 +433,8 @@ def plot_hextile(checkboard: np.ndarray):
     data = [(coords, cell.t, cell.a, cell.d) for coords, cell in np.ndenumerate(checkboard)]
 
     coords_offset, t, a, d = list(zip(*data))
+
+    r_offset, q_offset = list(zip(*coords_offset))
 
     coords_axial = [offset_to_axial(c) for c in coords_offset]
 
@@ -443,7 +445,7 @@ def plot_hextile(checkboard: np.ndarray):
     t: ndarray = np.array(t)
 
     size = 0.5
-    orientation = "flattop"
+    orientation = "pointytop"
 
     t_tolerant = t[t > 0.5]
 
@@ -463,7 +465,9 @@ def plot_hextile(checkboard: np.ndarray):
         r=r_axial,
         c=t,
         a=a,
-        d=d))
+        d=d,
+        r_offset=r_offset,
+        q_offset=q_offset))
 
     p.hex_tile(q="q", r="r", size=size,
                fill_color=linear_cmap('c', palette, 0.0, 1.0),
@@ -480,7 +484,8 @@ def plot_hextile(checkboard: np.ndarray):
 
     output_file(path_one_up + "/demo_hextile.html")
 
-    hover = HoverTool(tooltips=[("tolerance", "@c{0.00}"), ("attack", "@a{0.00}"), ("defence", "@d{0.00}")])
+    hover = HoverTool(tooltips=[("tolerance", "@c{0.00}"), ("attack", "@a{0.00}"), ("defence", "@d{0.00}"),
+                                ("r_offset, q_offset", "@r_offset, @q_offset")])
 
     p.add_tools(hover)
 
@@ -488,6 +493,10 @@ def plot_hextile(checkboard: np.ndarray):
 
 
 # todo: add function to plot cell with given coordinates and n friends in m sided checkboard
-def plot_cell_friends_hextile(checkboard: np.ndarray):
+def plot_cell_friends_hextile(center: tuple, board_side):
+
+    n_cells = int(board_side**2)
+
+    checkboard = np.array([0.0 for _ in range(n_cells)]).reshape
 
     return None
