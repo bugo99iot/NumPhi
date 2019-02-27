@@ -479,7 +479,8 @@ def plot_hextile(checkboard: np.ndarray):
 
     p.hex_tile(q="q", r="r", size=size,
                fill_color=linear_cmap('c', palette, 0.0, 1.0),
-               line_color=None, source=source, orientation=orientation)
+               line_color=None, source=source, orientation=orientation,
+               hover_color="pink", hover_alpha=0.8)
 
     p.xaxis.visible = False
     p.yaxis.visible = False
@@ -496,3 +497,9 @@ def plot_hextile(checkboard: np.ndarray):
     p.add_tools(hover)
 
     show(p)
+
+
+# todo: add function to plot cell with given coordinates and n friends in m sided checkboard
+def plot_cell_friends_hextile(checkboard: np.ndarray):
+
+    return None
