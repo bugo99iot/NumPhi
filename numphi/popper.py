@@ -193,6 +193,8 @@ class CheckBoard(object):
 
             new_board = copy.copy(step_board)
 
+            plot_hextile(new_board)
+
         self.checkboard = new_board
 
         return self.checkboard
@@ -275,5 +277,5 @@ if __name__ == "__main__":
     board = CheckBoard(total_cells=81, friend_cells=3, start="random", share_active=1.0,
                        start_proportion_intolerant=0.3, reinforce="when_intolerant", influence="drag_down")
     board.print_checkboard()
-    #board.interact_n_times(n_of_interactions=1000)
+    board.interact_n_times(n_of_interactions=10)
     #board.print_checkboard()

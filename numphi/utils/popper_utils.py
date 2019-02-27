@@ -331,7 +331,7 @@ def get_all_neighbours_for_cell(coords: tuple) -> List[tuple]:
         random.shuffle(cell_friends_negative)
         random.shuffle(cell_friends_positive)
 
-        yield cell_friends_positive + cell_friends_negative
+        return cell_friends_positive + cell_friends_negative
 
     # if y coordinate is odd
 
@@ -354,24 +354,7 @@ def get_all_neighbours_for_cell(coords: tuple) -> List[tuple]:
         random.shuffle(cell_friends_negative)
         random.shuffle(cell_friends_positive)
 
-        yield cell_friends_positive + cell_friends_negative
-
-
-def get_coordinates_of_all_cells(board_side: int) -> list:
-
-    if board_side < 2:
-
-        raise Exception("Board side must be 2 or greater")
-
-    all_coordinates = list()
-
-    for v in range(board_side):
-
-        for h in range(board_side):
-
-            all_coordinates.append((v, h))
-
-    return all_coordinates
+        return cell_friends_positive + cell_friends_negative
 
 
 def generate_n_friends(center: tuple, board_side: int) -> List[tuple]:
@@ -386,12 +369,9 @@ def generate_n_friends(center: tuple, board_side: int) -> List[tuple]:
 
         for cell in starting_cells:
 
-            cell_neighbours = get_all_neighbours_for_cell(coords=cell)
-
-            for neighbour in cell_neighbours:
+            for neighbour in get_all_neighbours_for_cell(coords=cell):
 
                 if neighbour not in friends and neighbour != center:
-
                     step_neighbours.append(neighbour)
 
                     friends.append(neighbour)
@@ -409,19 +389,27 @@ def build_interaction_matrix(friend_cells: int, share_active: float, board_side:
 
         friend_cells = int(board_side**2) - 1
 
-    influence_matrix = np.array([] for _ in range(board_side * board_side)).reshape(board_side, board_side)
+    influence_matrix = np.empty([board_side, board_side], dtype=object)
 
     for coords, _ in np.ndenumerate(influence_matrix):
 
         current_friends = list()
 
-        for i in range(friend_cells):
+        i = 0
 
-            new_cell = generate_n_friends(center=coords, board_side=board_side)
+        for new_cell in generate_n_friends(center=coords, board_side=board_side):
 
-            if new_cell[0] >= 0 and new_cell[1] >= 0:
+            # todo: fix issue, bottom right corner cell must have max friends
+
+            if 0 <= new_cell[0] < board_side and 0 <= new_cell[1] < board_side:
 
                 current_friends.append(new_cell)
+
+            i += 1
+
+            if i >= friend_cells:
+
+                break
 
         influence_matrix[coords] = current_friends
 
@@ -492,7 +480,7 @@ def plot_hextile(checkboard: np.ndarray):
 
     output_file(path_one_up + "/demo_hextile.html")
 
-    hover = HoverTool(tooltips=[("tolerance", "@c"), ("attack", "@a"), ("defence", "@d")])
+    hover = HoverTool(tooltips=[("tolerance", "@c{0.00}"), ("attack", "@a{0.00}"), ("defence", "@d{0.00}")])
 
     p.add_tools(hover)
 
