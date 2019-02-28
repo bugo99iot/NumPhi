@@ -6,8 +6,9 @@ with open('requirements.txt') as f:
 with open('README.md') as f:
     readme = f.read()
 
+
 setup(name='NumPhi',
-      version='0.0.0',
+      version='0.0.1',
       # packages=['numphi'],
       packages=find_packages(), # use it to find packages in subdirectories of numphi/numphi
       description='The NumPy of philosophical computations.',

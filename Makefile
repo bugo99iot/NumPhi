@@ -17,5 +17,8 @@ test: ## run pytest on local machine
 .PHONY: pip-deploy
 pip-deploy: ## Deploy package to pip universe
 	make test
+	# git commit here
+	bumpversion patch
 	python setup.py sdist
 	# sudo rm -R dist
+
