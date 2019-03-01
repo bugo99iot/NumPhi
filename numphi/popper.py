@@ -7,8 +7,8 @@ import copy
 from numphi.parameters import INFLUENCE_OPTIONS, REINFORCE_OPTIONS
 from numphi.exceptions import CheckBoardException, CellException
 from numphi.utils.popper_utils import is_square, get_influenced_t_after_influence, \
-    get_influenced_a_after_influence, get_influenced_d_after_influence, offset_to_axial, build_interaction_matrix, \
-    plot_hextile
+    get_influenced_a_after_influence, get_influenced_d_after_influence, build_interaction_matrix, \
+    plot_hextile, plot_bokeh_board
 
 from dotenv import load_dotenv, find_dotenv
 import os
@@ -157,6 +157,12 @@ class CheckBoard(object):
 
         return None
 
+    def print_bokeh_board(self, n_of_interactions: int = 1):
+
+        iterable_checkboards = self.interact_n_times(n_of_interactions=n_of_interactions)
+
+        plot_bokeh_board(iterable_checkboards=iterable_checkboards)
+
     def print_distribution(self):
         """
         Print tolerance distribution in 0.1 buckets
@@ -165,15 +171,17 @@ class CheckBoard(object):
 
         return None
 
-    def interact_n_times(self, n_of_interactions: int = 1) -> None:
+    def interact_n_times(self, n_of_interactions: int = 1) -> list:
+
+        iterable_checkboards = list()
+
+        iterable_checkboards.append(self.checkboard)
 
         new_board = copy.copy(self.checkboard)
 
         interaction_matrix = build_interaction_matrix(friend_cells=self.friend_cells,
                                                       share_active=self.share_active,
                                                       board_side=self.board_side)
-
-        print(interaction_matrix)
 
         for steps in range(n_of_interactions):
 
@@ -195,11 +203,11 @@ class CheckBoard(object):
 
             new_board = copy.copy(step_board)
 
-            plot_hextile(new_board)
+            iterable_checkboards.append(new_board)
 
-        self.checkboard = new_board
+            # plot_hextile(new_board)
 
-        return self.checkboard
+        return iterable_checkboards
 
 
 class Cell(object):
@@ -278,6 +286,5 @@ if __name__ == "__main__":
 
     board = CheckBoard(total_cells=81, friend_cells=6, start="random", share_active=1.0,
                        start_proportion_intolerant=0.3, reinforce="when_intolerant", influence="drag_down")
-    board.print_checkboard()
-    board.interact_n_times(n_of_interactions=10)
-    #board.print_checkboard()
+
+    board.print_bokeh_board(n_of_interactions=10)
