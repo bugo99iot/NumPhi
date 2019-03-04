@@ -8,7 +8,7 @@ from bokeh.models.sources import ColumnDataSource
 from bokeh.transform import linear_cmap
 from bokeh.layouts import column, widgetbox
 from bokeh.palettes import Plasma256 as palette  # this import will will be highlighted by PyCharm, ignore it
-from numpy.core._multiarray_umath import ndarray
+from bokeh.models.widgets import Panel, Tabs
 
 from numphi.parameters import INFLUENCE_OPTIONS, REINFORCE_OPTIONS
 from typing import List
@@ -416,6 +416,7 @@ def offset_to_axial(coords: tuple) -> tuple:
 
 
 def plot_hextile(checkboard: np.ndarray):
+
     data = [(coords, cell.t, cell.a, cell.d) for coords, cell in np.ndenumerate(checkboard)]
 
     coords_offset, t, a, d = list(zip(*data))
@@ -426,9 +427,9 @@ def plot_hextile(checkboard: np.ndarray):
 
     r_axial, q_axial = list(zip(*coords_axial))
 
-    r_axial: ndarray = np.array(r_axial)
-    q_axial: ndarray = np.array(q_axial)
-    t: ndarray = np.array(t)
+    r_axial: np.ndarray = np.array(r_axial)
+    q_axial: np.ndarray = np.array(q_axial)
+    t: np.ndarray = np.array(t)
 
     size = 0.5
     orientation = "pointytop"
@@ -504,9 +505,9 @@ def get_data_dict(checkboard: np.ndarray, epoch: int):
 
     r_axial, q_axial = list(zip(*coords_axial))
 
-    r_axial: ndarray = np.array(r_axial)
-    q_axial: ndarray = np.array(q_axial)
-    t: ndarray = np.array(t)
+    r_axial = np.array(r_axial)
+    q_axial = np.array(q_axial)
+    t = np.array(t)
 
     epoch_array = np.full(t.size, epoch)
 
@@ -523,6 +524,10 @@ def get_data_dict(checkboard: np.ndarray, epoch: int):
 
 
 def plot_bokeh_board(iterable_checkboards: List[np.ndarray]):
+
+    path_one_up = "/".join(os.path.dirname(os.path.realpath(__file__)).split("/")[:-1]) + "/sample_data"
+
+    output_file(path_one_up + "/demo_hextile.html")
 
     sources = [ColumnDataSource(get_data_dict(checkboard=checkboard, epoch=i)) for i, checkboard
                in enumerate(iterable_checkboards)]
@@ -560,10 +565,6 @@ def plot_bokeh_board(iterable_checkboards: List[np.ndarray]):
     # p.background_fill_color = '#440154'
     p.grid.visible = False
 
-    # path_one_up = "/".join(os.path.dirname(os.path.realpath(__file__)).split("/")[:-1]) + "/sample_data"
-
-    # output_file(path_one_up + "/demo_hextile.html")
-
     # Add the slider
     code = """       
         var step = cb_obj.value + 1;    
@@ -584,6 +585,16 @@ def plot_bokeh_board(iterable_checkboards: List[np.ndarray]):
 
     p.add_tools(hover)
 
+    # annotations: http://bokeh.pydata.org/en/latest/docs/user_guide/annotations.html#userguide-annotations
+
     layout = column(p, widgetbox(slider))
 
-    show(layout)
+    tab1 = Panel(child=layout, title="Simulation")
+
+    p2 = figure(title="Coming soon", match_aspect=True, tools="wheel_zoom,reset", plot_width=500, plot_height=500)
+    p2.line([1, 2, 3, 4, 5], [6, 7, 2, 4, 5], line_width=3, color="navy", alpha=0.5)
+    tab2 = Panel(child=p2, title="Coming soon")
+
+    tabs = Tabs(tabs=[tab1, tab2])
+
+    show(tabs)
