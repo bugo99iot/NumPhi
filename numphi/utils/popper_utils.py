@@ -2,9 +2,8 @@ import math
 import numpy as np
 import random
 
-from bokeh.io import curdoc, showing
 from bokeh.plotting import figure, output_file, show
-from bokeh.models import HoverTool, ColorBar, ColorMapper, Ticker, Slider, CustomJS
+from bokeh.models import HoverTool, Slider, CustomJS
 from bokeh.models.sources import ColumnDataSource
 from bokeh.transform import linear_cmap
 from bokeh.layouts import column, widgetbox
@@ -518,17 +517,23 @@ def get_data_dict(checkboard: np.ndarray, epoch: int):
     full_dict["d"] = d
     full_dict["r_offset"] = r_offset
     full_dict["q_offset"] = q_offset
-    full_dict["epoch"] = epoch_array
+    full_dict["epoch"] = epoch_array  # tweak to fix frontend issue
 
     return full_dict
 
 
 def plot_bokeh_board(iterable_checkboards: List[np.ndarray]):
 
-    all_column_data_sources = [ColumnDataSource(get_data_dict(checkboard=checkboard, epoch=i)) for i, checkboard
+    sources = [ColumnDataSource(get_data_dict(checkboard=checkboard, epoch=i)) for i, checkboard
                                in enumerate(iterable_checkboards)]
 
-    source = all_column_data_sources[0]
+    print(len(sources))
+
+    sources = [sources[0]] + sources
+
+    print(len(sources))
+
+    source = sources[0]
 
     size = 0.5
     orientation = "pointytop"
@@ -564,17 +569,16 @@ def plot_bokeh_board(iterable_checkboards: List[np.ndarray]):
     # output_file(path_one_up + "/demo_hextile.html")
 
     # Add the slider
-    code = """                                                                                                  
-        var step = slider.get('value');
-        var new_source_data = all_column_data_sources[step].get('data');
-        var a = new_source_data['a'];
-        var t = new_source_data['t'];
-        var epoch = new_source_data['epoch'];
-        console.log(epoch);
-        source.change.emit();    
+    code = """       
+        var step = cb_obj.value + 1;    
+        var new_data = sources[step].data;
+        source.data = new_data;
+        source.change.emit();   
         """
 
-    callback = CustomJS(args=dict(source=source, all_column_data_sources=all_column_data_sources), code=code)
+    callback = CustomJS(args=dict(source=source, sources=sources), code=code)
+
+    slider = Slider(start=0, end=len(sources)-2, step=1, value=0, title="Epoch", callback=callback)
 
     hover = HoverTool(tooltips=[("tolerance", "@t{0.00}"),
                                 ("attack", "@a{0.00}"),
@@ -583,11 +587,6 @@ def plot_bokeh_board(iterable_checkboards: List[np.ndarray]):
                                 ("epoch", "@epoch")], callback=callback)
 
     p.add_tools(hover)
-
-    slider = Slider(start=0, end=len(iterable_checkboards), step=1, value=0,
-                    title="Epoch")
-
-    slider.js_on_change('value', callback)
 
     layout = column(p, widgetbox(slider))
 

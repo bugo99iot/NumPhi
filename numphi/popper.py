@@ -287,4 +287,4 @@ if __name__ == "__main__":
     board = CheckBoard(total_cells=81, friend_cells=6, start="random", share_active=1.0,
                        start_proportion_intolerant=0.3, reinforce="when_intolerant", influence="drag_down")
 
-    board.print_bokeh_board(n_of_interactions=10)
+    board.print_bokeh_board(n_of_interactions=2)
