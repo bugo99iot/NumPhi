@@ -525,13 +525,9 @@ def get_data_dict(checkboard: np.ndarray, epoch: int):
 def plot_bokeh_board(iterable_checkboards: List[np.ndarray]):
 
     sources = [ColumnDataSource(get_data_dict(checkboard=checkboard, epoch=i)) for i, checkboard
-                               in enumerate(iterable_checkboards)]
+               in enumerate(iterable_checkboards)]
 
-    print(len(sources))
-
-    sources = [sources[0]] + sources
-
-    print(len(sources))
+    sources = [ColumnDataSource(get_data_dict(checkboard=iterable_checkboards[0], epoch=-1))] + sources
 
     source = sources[0]
 

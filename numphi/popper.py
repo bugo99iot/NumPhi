@@ -205,8 +205,6 @@ class CheckBoard(object):
 
             iterable_checkboards.append(new_board)
 
-            # plot_hextile(new_board)
-
         return iterable_checkboards
 
 
