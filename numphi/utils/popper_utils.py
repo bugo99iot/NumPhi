@@ -524,12 +524,16 @@ def get_data_dict(checkboard: np.ndarray, epoch: int):
 
 def plot_bokeh_board(iterable_checkboards: List[np.ndarray]):
 
+    path_one_up = "/".join(os.path.dirname(os.path.realpath(__file__)).split("/")[:-1]) + "/sample_data"
+
+    output_file(path_one_up + "/demo_hextile.html")
+
     sources = [ColumnDataSource(get_data_dict(checkboard=checkboard, epoch=i)) for i, checkboard
                in enumerate(iterable_checkboards)]
 
-    sources = [ColumnDataSource(get_data_dict(checkboard=iterable_checkboards[0], epoch=-1))] + sources
+    sources = sources + [ColumnDataSource(get_data_dict(checkboard=iterable_checkboards[0], epoch=0))]
 
-    source = sources[0]
+    source = sources[-1]
 
     size = 0.5
     orientation = "pointytop"
@@ -560,13 +564,9 @@ def plot_bokeh_board(iterable_checkboards: List[np.ndarray]):
     # p.background_fill_color = '#440154'
     p.grid.visible = False
 
-    # path_one_up = "/".join(os.path.dirname(os.path.realpath(__file__)).split("/")[:-1]) + "/sample_data"
-
-    # output_file(path_one_up + "/demo_hextile.html")
-
     # Add the slider
     code = """       
-        var step = cb_obj.value + 1;    
+        var step = cb_obj.value;    
         var new_data = sources[step].data;
         source.data = new_data;
         source.change.emit();   
