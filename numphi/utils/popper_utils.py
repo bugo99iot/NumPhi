@@ -532,9 +532,9 @@ def plot_bokeh_board(iterable_checkboards: List[np.ndarray]):
     sources = [ColumnDataSource(get_data_dict(checkboard=checkboard, epoch=i)) for i, checkboard
                in enumerate(iterable_checkboards)]
 
-    sources = [ColumnDataSource(get_data_dict(checkboard=iterable_checkboards[0], epoch=-1))] + sources
+    sources = sources + [ColumnDataSource(get_data_dict(checkboard=iterable_checkboards[0], epoch=0))]
 
-    source = sources[0]
+    source = sources[-1]
 
     size = 0.5
     orientation = "pointytop"
@@ -567,7 +567,7 @@ def plot_bokeh_board(iterable_checkboards: List[np.ndarray]):
 
     # Add the slider
     code = """       
-        var step = cb_obj.value + 1;    
+        var step = cb_obj.value;    
         var new_data = sources[step].data;
         source.data = new_data;
         source.change.emit();   
