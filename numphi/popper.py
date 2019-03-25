@@ -282,7 +282,7 @@ def reinforce(influenced: Cell, influencer: Cell, direction) -> Cell:
 
 if __name__ == "__main__":
 
-    board = CheckBoard(total_cells=81, friend_cells=20, start="popper", share_active=1.0,
+    board = CheckBoard(total_cells=81, friend_cells=15, start="random", share_active=1.0,
                        start_proportion_intolerant=0.3, reinforce="when_intolerant", influence="drag_down")
 
     board.print_bokeh_board(n_of_interactions=50)
