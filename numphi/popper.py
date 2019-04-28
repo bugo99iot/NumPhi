@@ -107,8 +107,6 @@ class CheckBoard(object):
 
                 raise CheckBoardException("start_proportion must be a number between 0.0 and 1.0")
 
-        # todo: decide q and r where it goes, in cell or in index
-
         if start == "random":
 
             self.checkboard = np.array([Cell(t=round(random.random(), 2),
@@ -182,6 +180,8 @@ class CheckBoard(object):
         interaction_matrix = build_interaction_matrix(friend_cells=self.friend_cells,
                                                       share_active=self.share_active,
                                                       board_side=self.board_side)
+
+        print(interaction_matrix)
 
         for steps in range(n_of_interactions):
 
@@ -282,7 +282,7 @@ def reinforce(influenced: Cell, influencer: Cell, direction) -> Cell:
 
 if __name__ == "__main__":
 
-    board = CheckBoard(total_cells=81, friend_cells=15, start="random", share_active=1.0,
-                       start_proportion_intolerant=0.3, reinforce="when_intolerant", influence="drag_down")
+    board = CheckBoard(total_cells=9, friend_cells=4, start="popper", share_active=1.0,
+                       start_proportion_intolerant=0.6, reinforce="when_intolerant", influence="always")
 
-    board.print_bokeh_board(n_of_interactions=50)
+    board.print_bokeh_board(n_of_interactions=30)

@@ -55,10 +55,10 @@ def bound_value(value: float):
     lower_bound = 0.0
 
     if value > upper_bound:
-        return 1.0
+        return upper_bound
 
     if value < lower_bound:
-        return 0.0
+        return lower_bound
 
     return value
 
@@ -105,7 +105,7 @@ def get_influenced_t_after_influence(influenced_t: float, influencer_t: float,
 
         if direction in ["drag_down", "always"]:
 
-            amount = round(tolerance_gap / 10.0, 2)
+            amount = abs(round(tolerance_gap / 10.0, 2))
 
             if amount < min_influence:
                 amount = min_influence
@@ -302,7 +302,6 @@ def get_influenced_d_after_influence(influenced_t: float, influencer_t: float,
 
 
 def get_all_neighbours_for_cell(coords: tuple, board_side: int) -> List[tuple]:
-    # todo: this can be heavely optimised
 
     # if y coordinate is even
 
@@ -319,13 +318,11 @@ def get_all_neighbours_for_cell(coords: tuple, board_side: int) -> List[tuple]:
 
         # we need some extra juggling here to make sure that cells near the edge have as many friends as possible
 
-        cell_friends_outside_board = [k for k in cell_friends if
-                                      k[0] < 0 or k[0] >= board_side or k[1] < 0 or k[1] >= board_side]
-        cell_friends_inside_board = [k for k in cell_friends if k not in cell_friends_outside_board]
+        cell_friends_inside_board = [k for k in cell_friends if 0 <= k[0] < board_side and 0 <= k[1] < board_side]
 
         random.shuffle(cell_friends_inside_board)
 
-        return cell_friends_inside_board + cell_friends_outside_board
+        return cell_friends_inside_board
 
     # if y coordinate is odd
 
@@ -342,21 +339,20 @@ def get_all_neighbours_for_cell(coords: tuple, board_side: int) -> List[tuple]:
 
         # we need some extra juggling here to make sure that cells near the edge have as many friends as possible
 
-        cell_friends_outside_board = [k for k in cell_friends if
-                                      k[0] < 0 or k[0] >= board_side or k[1] < 0 or k[1] >= board_side]
-        cell_friends_inside_board = [k for k in cell_friends if k not in cell_friends_outside_board]
+        cell_friends_inside_board = [k for k in cell_friends if 0 <= k[0] < board_side and 0 <= k[1] < board_side]
 
         random.shuffle(cell_friends_inside_board)
 
-        return cell_friends_inside_board + cell_friends_outside_board
+        return cell_friends_inside_board
 
 
-def generate_n_friends(center: tuple, board_side: int) -> List[tuple]:
+def generate_n_friends(center: tuple, board_side: int):
+
     friends = list()
 
     starting_cells = [center]
 
-    for step in range(0, board_side - 1):
+    for step in range(0, board_side):
 
         step_neighbours = list()
 
@@ -365,6 +361,7 @@ def generate_n_friends(center: tuple, board_side: int) -> List[tuple]:
             for neighbour in get_all_neighbours_for_cell(coords=cell, board_side=board_side):
 
                 if neighbour not in friends and neighbour != center:
+
                     step_neighbours.append(neighbour)
 
                     friends.append(neighbour)
@@ -375,6 +372,7 @@ def generate_n_friends(center: tuple, board_side: int) -> List[tuple]:
 
 
 def build_interaction_matrix(friend_cells: int, share_active: float, board_side: int) -> np.ndarray:
+
     if friend_cells > int(board_side ** 2):
         logging.warning("Friend cells > board size, friend cells will be board size -1")
 
@@ -386,16 +384,11 @@ def build_interaction_matrix(friend_cells: int, share_active: float, board_side:
 
         current_friends = list()
 
-        i = 0
-
         for new_cell in generate_n_friends(center=coords, board_side=board_side):
 
-            if 0 <= new_cell[0] < board_side and 0 <= new_cell[1] < board_side:
-                current_friends.append(new_cell)
+            current_friends.append(new_cell)
 
-            i += 1
-
-            if i >= friend_cells:
+            if len(current_friends) == friend_cells:
                 break
 
         influence_matrix[coords] = current_friends
@@ -511,8 +504,8 @@ def get_data_dict(checkboard: np.ndarray, epoch: int):
 
     epoch_array = np.full(t.size, epoch)
 
-    full_dict["q"] = q_axial
-    full_dict["r"] = r_axial
+    full_dict["q_axial"] = q_axial
+    full_dict["r_axial"] = r_axial
     full_dict["t"] = t
     full_dict["a"] = a
     full_dict["d"] = d
@@ -554,7 +547,7 @@ def plot_bokeh_board(iterable_checkboards: List[np.ndarray]):
 
     p.title.align = 'center'
 
-    p.hex_tile(q="q", r="r", size=size,
+    p.hex_tile(q="q_axial", r="r_axial", size=size,
                fill_color=linear_cmap('t', palette, 0.0, 1.0),
                line_color=None, source=source, orientation=orientation,
                hover_color="pink", hover_alpha=0.8)
@@ -581,6 +574,7 @@ def plot_bokeh_board(iterable_checkboards: List[np.ndarray]):
                                 ("attack", "@a{0.00}"),
                                 ("defence", "@d{0.00}"),
                                 ("r_offset, q_offset", "@r_offset, @q_offset"),
+                                ("r_axial, q_axial", "@r_axial, @q_axial"),
                                 ("epoch", "@epoch")], callback=callback)
 
     p.add_tools(hover)
