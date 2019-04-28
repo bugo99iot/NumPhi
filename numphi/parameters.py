@@ -5,7 +5,7 @@
 # "always": both the above
 # "none": do not influence
 
-INFLUENCE_OPTIONS = ["drag_down", "drag_up", "always", "none"]
+INFLUENCE_OPTIONS = ["drag_down", "drag_up", "always"]
 
 # define types of reinforcement
 # "when_tolerant": attack and defence of influenced will change if average of tolerances > 0.5
@@ -13,4 +13,4 @@ INFLUENCE_OPTIONS = ["drag_down", "drag_up", "always", "none"]
 # "always": both the above
 # "none": don't reinforce
 
-REINFORCE_OPTIONS = ["when_intolerant", "when_tolerant", "always", "none"]
+REINFORCE_OPTIONS = ["when_intolerant", "when_tolerant", "always"]

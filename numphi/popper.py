@@ -187,7 +187,7 @@ class CheckBoard(object):
 
             step_board = copy.copy(new_board)
 
-            for coords, cell in np.ndenumerate(self.checkboard):
+            for coords, cell in np.ndenumerate(new_board):
 
                 # find all cells being influenced by current cell
 
@@ -195,9 +195,9 @@ class CheckBoard(object):
 
                 for combo in all_combos:
 
-                    influenced = influence(influenced=new_board[combo], influencer=cell, direction=self.influence)
+                    influenced = influence(influenced=step_board[combo], influencer=cell, direction=self.influence)
 
-                    influenced = reinforce(influenced=influenced, influencer=cell, direction=self.reinforce)
+                    # influenced = reinforce(influenced=influenced, influencer=cell, direction=self.reinforce)
 
                     step_board[combo] = influenced
 
@@ -249,8 +249,6 @@ def influence(influenced: Cell, influencer: Cell, direction: str) -> Cell:
     # define brand new cell to avoid changing original
     cell_after_influence = copy.copy(influenced)
 
-    # if influencer is enough influential, tolerance of influential will be modified
-
     cell_after_influence.t = get_influenced_t_after_influence(influenced_t=influenced.t, influencer_t=influencer.t,
                                                               influenced_a=influenced.a, influencer_a=influencer.a,
                                                               influenced_d=influenced.d, influencer_d=influencer.d,
@@ -282,7 +280,7 @@ def reinforce(influenced: Cell, influencer: Cell, direction) -> Cell:
 
 if __name__ == "__main__":
 
-    board = CheckBoard(total_cells=9, friend_cells=4, start="popper", share_active=1.0,
-                       start_proportion_intolerant=0.6, reinforce="when_intolerant", influence="always")
+    board = CheckBoard(total_cells=9, friend_cells=3, start="popper", share_active=1.0,
+                       start_proportion_intolerant=0.2, reinforce="when_intolerant", influence="always")
 
-    board.print_bokeh_board(n_of_interactions=30)
+    board.print_bokeh_board(n_of_interactions=100)
